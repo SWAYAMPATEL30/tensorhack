@@ -1,0 +1,568 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.top{padding:14px 16px 10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.top h2{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.top p{font-size:12px;color:var(--color-text-secondary);margin-top:3px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.fb{font-size:11px;padding:3px 12px;border-radius:999px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.fb.active{font-weight:500}
+.fb.all.active{background:#E6F1FB;color:#0C447C;border-color:#378ADD}
+.fb.built.active{background:#E1F5EE;color:#085041;border-color:#1D9E75}
+.fb.easy.active{background:#EAF3DE;color:#27500A;border-color:#639922}
+.fb.med.active{background:#FAEEDA;color:#633806;border-color:#BA7517}
+.fb.hard.active{background:#FCEBEB;color:#791F1F;border-color:#E24B4A}
+.fb.hypo.active{background:#EEEDFE;color:#3C3489;border-color:#7F77DD}
+.counter{font-size:11px;color:var(--color-text-tertiary);padding:6px 16px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.list{padding:10px 16px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px 16px}
+.card-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.num{font-size:11px;font-weight:500;color:var(--color-text-tertiary);min-width:24px;padding-top:2px}
+.name{font-size:13px;font-weight:500;color:var(--color-text-primary);flex:1;line-height:1.4}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding-left:34px}
+.tag{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:500;white-space:nowrap}
+.t-built{background:#E1F5EE;color:#085041}
+.t-easy{background:#EAF3DE;color:#27500A}
+.t-med{background:#FAEEDA;color:#633806}
+.t-hard{background:#FCEBEB;color:#791F1F}
+.t-hypo{background:#EEEDFE;color:#3C3489}
+.t-digit{background:#E6F1FB;color:#0C447C}
+.t-acc{background:#EAF3DE;color:#27500A}
+.t-risk{background:#FCEBEB;color:#791F1F}
+.t-intel{background:#EEEDFE;color:#3C3489}
+.t-scale{background:#E1F5EE;color:#085041}
+.desc{font-size:12px;color:var(--color-text-secondary);line-height:1.6;padding-left:34px;margin-bottom:10px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-left:34px;margin-bottom:10px}
+.meta-box{background:var(--color-background-secondary);border-radius:8px;padding:7px 10px}
+.meta-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);margin-bottom:2px}
+.meta-val{font-size:11px;color:var(--color-text-primary);line-height:1.4}
+.meta-full{grid-column:1/-1}
+.steps-title{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);padding-left:34px;margin-bottom:6px}
+.step{display:flex;gap:8px;padding-left:34px;margin-bottom:5px}
+.sdot{width:18px;height:18px;border-radius:50%;background:var(--color-background-info);color:var(--color-text-info);font-size:9px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stxt{font-size:11px;color:var(--color-text-secondary);line-height:1.5;padding-top:1px}
+.ask{margin-left:34px;margin-top:8px}
+.ask button{font-size:11px;padding:5px 12px;border-radius:8px;border:0.5px solid var(--color-border-info);background:transparent;color:var(--color-text-info);cursor:pointer}
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:4px 0 0}
+</style>
+
+<div class="top">
+  <h2>TenzorX — 75 Hackathon Winning Features (Full List)</h2>
+  <p>All features visible · Filter by difficulty · Click "Generate code" on any feature</p>
+</div>
+
+<div class="filters">
+  <button class="fb all active" onclick="setFilter('all',this)">All 75</button>
+  <button class="fb built" onclick="setFilter('built',this)">Already Built</button>
+  <button class="fb easy" onclick="setFilter('easy',this)">Easy (1-2 days)</button>
+  <button class="fb med" onclick="setFilter('med',this)">Medium (3-7 days)</button>
+  <button class="fb hard" onclick="setFilter('hard',this)">Hard (1-2 weeks)</button>
+  <button class="fb hypo" onclick="setFilter('hypo',this)">Hypothetical</button>
+</div>
+
+<div class="counter" id="counter">Showing all 75 features</div>
+<div class="list" id="list"></div>
+
+<script>
+var F=[
+{n:1,name:"Real-time WebSocket video liveness pipeline",diff:"built",crit:["digit","acc","risk"],
+desc:"Your YOLO-based pipeline captures Base64 frames from the browser via WebSocket, runs object detection, and returns confidence flags every 500ms. Confirms a live human is present in real-time — the backbone of the entire KYC flow.",
+tech:"FastAPI WebSocket + YOLO cv_engine",effort:"Already built — polish only",impact:"Critical KYC gate — nothing works without this",
+judge:"Digitisation, Accuracy, Risk Mitigation",
+steps:["Frontend: setInterval pushes Base64 canvas frames every 500ms to WS /ws/video/{session_id}","Backend: cv_engine.detect() runs YOLO on decoded frame, returns {bbox, confidence, age_est}","Gate: if confidence < 0.7 for 3 consecutive frames → liveness_fail flag","Store each frame to video_frames table with timestamp + liveness_valid boolean","Admin: surface liveness_fail rate as a fraud signal in the dashboard"]},
+
+{n:2,name:"XGBoost credit risk scoring engine",diff:"built",crit:["risk","intel"],
+desc:"Core ML model predicting default probability (0–1) from demographic, employment, and bureau data. Your simulation showed scores of 0.064–0.135 for clean profiles and 0.702–0.992 for fraud/high-risk applicants. Returns LOW/MED/HIGH risk bands.",
+tech:"XGBoost + joblib + scikit-learn",effort:"Already built — add SHAP",impact:"Core decision engine for every offer",
+judge:"Risk Mitigation, Intelligence",
+steps:["Feature vector: [age_est, declared_income, employment_type, bureau_score, fraud_score, loan_amount]","XGBoost.predict_proba() returns P(default) — stored as risk_score","Band mapping: <0.2=LOW, 0.2–0.5=MED, >0.5=HIGH","Add SHAP: shap.TreeExplainer(model).shap_values(X) — top 3 features per decision","Expose /api/risk/explain returning SHAP values for applicant-facing explanation"]},
+
+{n:3,name:"Multi-signal fraud detection ensemble",diff:"built",crit:["risk","acc"],
+desc:"Combines 5 fraud signals: video age vs declared age delta, speech speed anomaly, audio stress level, document field mismatches, and IP geolocation vs declared city. 'Fake Name' scored 0.862 in your simulation.",
+tech:"Ensemble model + age_validator + emotion model + geo-IP",effort:"Already built — add geo-IP",impact:"Highest judge visibility for fraud prevention",
+judge:"Risk Mitigation, Accuracy",
+steps:["|video_age - declared_age| > 7 years → add 0.3 to fraud_score","STT words-per-minute > 220 or < 60 → speech anomaly flag","emotion model stress_score > 0.7 during income declaration → flag","OCR extracted PAN name != declared name → mismatch flag (+0.2)","IP geolocation city != declared city → location mismatch (+0.25)"]},
+
+{n:4,name:"SHAP-explained offer engine (3 tiers)",diff:"built",crit:["intel","digit"],
+desc:"SHAP-powered engine generates Prime (low risk), Conservative (medium), and Flexible (high risk) loan structures. Every offer is explainable. Your simulation produced offers from Rs.140k to Rs.750k across 20 profiles.",
+tech:"SHAP + offer_engine + EMI calculator",effort:"Already built — add narrative text",impact:"Personalization showcase — judges can see WHY each number was chosen",
+judge:"Intelligence, Personalization",
+steps:["Prime: amount=income*5, rate=10.5%, tenure=36 months","Conservative: amount=income*3, rate=13.5%, tenure=24 months","Flexible: amount=income*1.5, rate=16.5%, tenure=18 months + guarantor","SHAP narration LLM call: explain top 3 decision factors in plain English","Show applicant: 'Your offer is Rs.4.25L because your income stability is strong'"]},
+
+{n:5,name:"Whisper STT + NLP intent extraction",diff:"built",crit:["digit","intel"],
+desc:"Audio stream chunked and sent to Whisper for real-time transcription. NLP intent classifier extracts income amount, employer name, loan purpose, and verbal consent phrase. Eliminates manual form filling.",
+tech:"Whisper STT + intent_classifier + entity extraction",effort:"Already built — add field confidence scores",impact:"Paperless journey — core differentiator",
+judge:"Digitisation, Intelligence",
+steps:["3-second audio chunks sent via WS /ws/audio/{session_id} as Base64 WAV","Whisper transcribes, appended to running transcript in sessions table","Intent classifier: [income_claim, employer_claim, consent, loan_purpose, name_claim]","Entity extraction: amounts (Rs.X lakh), employer names, city names via spaCy NER","Auto-fill: if income_claim confidence > 0.85, set form.income = extracted_amount"]},
+
+{n:6,name:"3-phase gated onboarding flow",diff:"built",crit:["digit","acc"],
+desc:"Phase 1 (ID document scan) → Phase 2 (biometrics + liveness) → Phase 3 (voice affirmation + consent). Each phase only unlocks when backend confidence flags clear a threshold via WebSocket response.",
+tech:"Next.js state machine + WebSocket gates",effort:"Already built — add retry and timeout",impact:"Compliance gate — judges check this",
+judge:"Digitisation, Compliance",
+steps:["Phase 1 gate: document_confidence > 0.80 AND ocr_name_match = true","Phase 2 gate: liveness_confidence > 0.85 AND fraud_score < 0.40","Phase 3 gate: verbal_consent_detected = true AND income_extracted = true","On failure: show specific error message with what needs fixing","Timeout: if phase takes > 3 min → save session and send SMS resume link"]},
+
+{n:7,name:"DPDPA 2023 audit log trail",diff:"built",crit:["acc","scale"],
+desc:"Every API call, model inference, and decision logged to audit_logs with timestamp, endpoint, model name, input hash, output, confidence, and latency. Fully DPDPA 2023 compliant — regulators can trace every decision.",
+tech:"SQLAlchemy + SQLite audit_logs table",effort:"Already built — add encryption",impact:"Compliance non-negotiable for NBFC",
+judge:"Accuracy, Compliance",
+steps:["Schema: {session_id, timestamp, endpoint, model_name, input_hash, output_summary, confidence, latency_ms}","Hash all PII before logging: sha256(pan_number) — never log raw PII","Data retention policy: audit_logs older than 7 years auto-archived","Add /api/audit/export endpoint returning JSON trail for RBI inspection","Consent withdrawal: anonymize session data within 72h of request (DPDPA requirement)"]},
+
+{n:8,name:"GPS geo-location capture + fraud check",diff:"easy",crit:["acc","risk"],
+desc:"Capture applicant GPS coordinates at session start. Cross-check against declared city, IP geolocation, and RBI-restricted zones. If all 3 don't align within 50km — strong fraud signal. Explicitly mentioned in the problem statement.",
+tech:"browser navigator.geolocation + ip-api.com + OpenStreetMap reverse geocode",effort:"1 day",impact:"Directly in problem statement — judges will look for this",
+judge:"Risk Mitigation, Accuracy",
+steps:["navigator.geolocation.getCurrentPosition() at session start → store {lat, lng}","Reverse geocode via nominatim.openstreetmap.org/reverse → get city/state","IP geolocation: ip-api.com with session IP → get IP-derived city","Cross-check: if geo_city != ip_city != declared_city → fraud_score += 0.25","Store all 3 in sessions: geo_city, ip_city, declared_city — show in admin dashboard"]},
+
+{n:9,name:"Device fingerprint + session metadata",diff:"easy",crit:["risk"],
+desc:"Capture device fingerprint (browser, OS, screen resolution, canvas hash) alongside session IP and user agent. Cross-reference across sessions to detect the same device submitting multiple applications — fraud ring signal.",
+tech:"FingerprintJS (open source) + sessions table",effort:"1 day",impact:"Fraud ring detection adds depth to risk score",
+judge:"Risk Mitigation",
+steps:["npm install @fingerprintjs/fingerprintjs","Generate visitorId on session start: const fp = await FingerprintJS.load()","POST {visitor_id, user_agent, screen_res, ip, timestamp} to /api/session/device","Query: if same visitor_id appears in > 2 prior sessions → device_reuse_flag + fraud_score += 0.15","Admin: 'Repeated device' alert panel in dashboard"]},
+
+{n:10,name:"Multilingual STT — Hindi + 8 regional languages",diff:"easy",crit:["digit","intel"],
+desc:"Extend Whisper with automatic language detection. Applicants speak in Hindi, Tamil, Telugu, Marathi, Gujarati, Bengali, Kannada, or Malayalam. Intent classifier maps vernacular financial terms like 'lakh', 'hazaar', 'tankhah' to standard fields.",
+tech:"Whisper large-v3 (language=None auto-detect) + langdetect",effort:"2 days",impact:"Reaches 600M+ non-English speakers in India",
+judge:"Digitisation, Personalization",
+steps:["Set whisper.transcribe(audio, language=None) — Whisper auto-detects","langdetect.detect(transcript) returns 'hi', 'ta', 'te' etc.","Vernacular amount parser: '5 lakh'→500000, 'paanch hazaar'→5000","Hindi consent: ['haan main manta hoon', 'mujhe manzoor hai'] → consent_detected=True","UI: show 'Language detected: Hindi' badge, confirmation messages in detected language"]},
+
+{n:11,name:"Document OCR with field cross-validation",diff:"easy",crit:["acc","digit"],
+desc:"Aadhaar, PAN, and salary slips photographed during Phase 1. OCR extracts name, DOB, ID number, employer, income. All extracted fields cross-validated against verbally declared values — mismatches become fraud signals.",
+tech:"Tesseract OCR + Google Vision API fallback + regex",effort:"1–2 days",impact:"Paperless verification — judges check document handling",
+judge:"Accuracy, Digitisation",
+steps:["Capture photo via canvas in Phase 1 → Base64 to POST /api/ocr/extract","pytesseract.image_to_string(image) → raw text","PAN regex: [A-Z]{5}[0-9]{4}[A-Z]{1}, DOB regex: \\d{2}/\\d{2}/\\d{4}","Cross-validate: ocr_name != declared_name → mismatch_flag, fraud_score += 0.2","Store {pan_hash, ocr_name, ocr_dob, ocr_income, mismatch_flags} — never raw Aadhaar number"]},
+
+{n:12,name:"Real CIBIL score API integration",diff:"med",crit:["risk","acc"],
+desc:"Trigger a soft CIBIL pull using the applicant's PAN number during the session. Live credit score replaces mock bureau data — decisions based on actual creditworthiness, not simulated data.",
+tech:"CIBIL API (or Experian/CRIF fallback) + PAN validation + async call",effort:"2–3 days",impact:"Real credit data makes the demo credible to PFL judges",
+judge:"Accuracy, Risk Mitigation",
+steps:["POST /api/bureau/pull with {pan_number, dob, name} → returns {cibil_score, account_count, dpd_history}","Initiate bureau pull at Phase 1 completion — result ready by Phase 3","Map CIBIL: 750+ = risk -0.1, 650–750 = +0.0, <650 = +0.2, no history = +0.1","Cache result 24h per PAN to avoid double-pulling","Fallback: if API times out (>3s) → use mock score but flag 'Estimated — verify required'"]},
+
+{n:13,name:"Selfie-to-Aadhaar face verification",diff:"med",crit:["acc","risk"],
+desc:"Extract the highest-confidence video frame during liveness check. Compare face against Aadhaar photo using InsightFace (ArcFace). Cosine similarity > 0.85 required to clear Phase 2. Problem statement explicitly requires this.",
+tech:"InsightFace (ArcFace) + cosine similarity + OpenCV",effort:"2–3 days",impact:"Explicitly in problem statement — mandatory for full marks",
+judge:"Accuracy, Risk Mitigation",
+steps:["pip install insightface onnxruntime","Best frame: pick highest liveness_confidence frame from video_frames table","Load Aadhaar photo: crop face region using cv2.CascadeClassifier","Compute embeddings for both faces using model.get_embedding()","Cosine similarity: np.dot(emb1,emb2)/(np.linalg.norm(emb1)*np.linalg.norm(emb2))","Gate: >0.85=MATCH, 0.70–0.85=REVIEW, <0.70=MISMATCH (fraud_score += 0.4)"]},
+
+{n:14,name:"LLM conversational context interpreter",diff:"med",crit:["intel","digit"],
+desc:"Problem statement explicitly requires an LLM intelligence layer. Claude or GPT-4o analyses the full transcript and extracts structured customer persona, risk indicators, income confidence, and loan purpose classification.",
+tech:"Anthropic Claude API + session transcript + JSON structured output",effort:"1–2 days",impact:"Judging criterion 3.4 — Intelligence layer is explicitly graded",
+judge:"Intelligence, Personalization",
+steps:["POST full transcript to LLM with system prompt to extract {income, employer, loan_purpose, risk_signals, persona}","Classify persona: salaried/self-employed/gig/student/retiree from transcript language","Risk keywords detection: ['restructuring', 'already have EMI', 'job change'] → soft risk signals","LLM output is JSON: {income_confidence, employer_confidence, risk_keywords, persona_type}","LLM supplements but does NOT override the deterministic XGBoost model — hybrid approach"]},
+
+{n:15,name:"Verbal consent timestamped recording",diff:"easy",crit:["acc","digit"],
+desc:"Problem statement specifically requires explicit verbal consent with auditable trail. System detects consent phrase in transcript, timestamps it to the millisecond, and creates a consent record linked to the audio clip — legally defensible proof.",
+tech:"Whisper word_timestamps=True + consent phrase detection + audio clip storage",effort:"1 day",impact:"Regulatory compliance — explicitly in problem statement",
+judge:"Accuracy, Compliance",
+steps:["Whisper timestamp mode: whisper.transcribe(audio, word_timestamps=True) → {word, start, end}","Consent phrases: ['I agree', 'I consent', 'haan main manta hoon', 'mujhe manzoor hai']","On detection: record {phrase, timestamp_ms, session_id, audio_clip_start, audio_clip_end}","Store in audit_logs with event_type='VERBAL_CONSENT'","Generate consent certificate PDF with name, timestamp, phrase, session_id, digital signature"]},
+
+{n:16,name:"Alternative credit scoring for thin-file applicants",diff:"med",crit:["intel","risk"],
+desc:"For gig workers, students, first-time borrowers with no CIBIL history — secondary XGBoost model uses UPI transaction regularity, utility payment patterns, and mobile recharge frequency as proxy credit signals. Unlocks 190M+ thin-file Indians.",
+tech:"Alternative data XGBoost + Account Aggregator API + UPI transaction parser",effort:"4–5 days",impact:"Financial inclusion angle — massive market expansion",
+judge:"Intelligence, Risk Mitigation",
+steps:["Thin-file detection: if cibil_score=None or <300 → route to alt_credit_model","Account Aggregator: Finvu/OneMoney AA API — applicant one-click consents to share bank data","Extract features: avg_monthly_balance, income_credit_regularity, emi_debit_presence","Train XGBoost on synthetic profiles with known outcomes","Alt score replaces CIBIL in main risk model for thin-file applicants","Limit: thin-file approved → Conservative tier only, max Rs.1 lakh first loan"]},
+
+{n:17,name:"DigiLocker eKYC integration",diff:"med",crit:["digit","acc"],
+desc:"Applicants authenticate via DigiLocker (Aadhaar-linked government vault) and pull verified Aadhaar, PAN, and degree certificates from government servers. No physical upload — government-verified data at source.",
+tech:"DigiLocker API + OAuth2 + Aadhaar XML parser",effort:"2–3 days",impact:"True paperless KYC — problem statement requires fully paperless journey",
+judge:"Digitisation, Accuracy",
+steps:["Register on DigiLocker developer portal → get client_id, client_secret","'Login with DigiLocker' button → redirect to OAuth2 authorize URL","Exchange code for access_token → call /v1/user/files to list documents","Pull Aadhaar XML: parse {name, dob, gender, address, uid_last4}","Auto-fill session from DigiLocker data — OCR step becomes optional confirmation only"]},
+
+{n:18,name:"Account Aggregator (AA) framework — RBI mandated",diff:"med",crit:["intel","digit"],
+desc:"Connect to India's RBI-mandated AA network. Applicant gives one consent and 2 years of bank transaction history flows in — eliminating bank statement uploads entirely. Gold standard for NBFC digital lending.",
+tech:"Finvu / OneMoney AA API + FIP consent flow + transaction parser",effort:"5–7 days",impact:"RBI-mandated infrastructure — shows regulatory awareness to judges",
+judge:"Digitisation, Intelligence",
+steps:["Register as FIU (Financial Information User) on AA network","Initiate consent: POST /Consent with {consentTypes: ['TRANSACTIONS'], dateRange: last 2 years}","Applicant approves on bank's AA app → consent handle returned","Fetch data: POST /FI/request → returns encrypted bank statement JSON","Parse: avg_balance, salary_credits, emi_debits, irregular_withdrawals","Feed parsed features into alt_credit_model as additional input signals"]},
+
+{n:19,name:"Deepfake CNN video detection layer",diff:"hard",crit:["risk","acc"],
+desc:"Beyond basic liveness, EfficientNet fine-tuned on FaceForensics++ analyses facial texture inconsistencies, unnatural blinking patterns, and lip-sync mismatch. Catches AI-generated face videos that pass basic liveness checks.",
+tech:"EfficientNet B4 + FaceForensics++ pretrained weights",effort:"3–5 days",impact:"Next-gen fraud prevention — unique differentiator",
+judge:"Risk Mitigation",
+steps:["pip install efficientnet-pytorch + download FaceForensics++ weights","Sample 10 frames evenly across the video session","EfficientNet.predict(frame) → {is_deepfake: bool, confidence: float}","Aggregate: if > 3 of 10 frames flagged → deepfake_detected = True → auto-reject","Texture analysis: DCT coefficients on face region — deepfakes show frequency artifacts","Store deepfake_score in sessions, show in admin as 'Advanced Fraud' column"]},
+
+{n:20,name:"WhatsApp Business API loan channel",diff:"med",crit:["digit","intel"],
+desc:"Full loan application via WhatsApp. Applicant sends 'Hi' to PFL WhatsApp number. Bot guides through Aadhaar photo capture, voice income declaration, and delivers loan offer — no app download required. 600M Indian users.",
+tech:"Meta WhatsApp Business API + webhook state machine",effort:"4–5 days",impact:"600M WhatsApp users — massive reach",
+judge:"Digitisation, Scalability",
+steps:["Register WhatsApp Business account on Meta Business Manager","Webhook: POST /webhook receives {from, type, text/media/audio} messages","State machine: GREETING → AADHAAR_PHOTO → INCOME_VOICE → CONSENT → OFFER","Download Aadhaar photo from WhatsApp CDN → run OCR pipeline","Download audio (.ogg) → convert to WAV → run Whisper STT","Send offer via WhatsApp template message with amount, rate, EMI, accept button"]},
+
+{n:21,name:"Education loan ROI predictor",diff:"med",crit:["intel"],
+desc:"Given applicant's course, institution tier (IIT/NIT/Tier-1/Tier-2), and specialization — predict expected starting salary using regression trained on NASSCOM/NIRF placement data. Feeds directly into repayment capacity calculation.",
+tech:"Gradient Boosting regressor + placement dataset + institution tier lookup",effort:"3–4 days",impact:"Education-specific USP directly relevant to PFL's product",
+judge:"Intelligence, Personalization",
+steps:["Institution tier DB: IIT/NIT/BITS=Tier1, Top private=Tier2, Others=Tier3","Train: features=[institution_tier, course, specialization, year] → target=starting_salary","Predict: roi_predictor.predict([Tier1, CS, AI, 2026]) → Rs.18 LPA expected","Repayment capacity: monthly_emi_max = predicted_salary * 0.35 / 12","Show in offer: 'Based on your IIT CS course, we estimate Rs.18 LPA — your EMI is Rs.8,500'"]},
+
+{n:22,name:"Graduation-linked flexible EMI scheduler",diff:"med",crit:["intel","digit"],
+desc:"EMI starts at 20% during study period (moratorium), ramps to 50% in year 1 post-graduation, reaches 100% EMI in year 2. No competitor NBFC offers this structure — pure differentiation for education loans.",
+tech:"Custom amortization engine + graduated EMI formula",effort:"2–3 days",impact:"Education loan USP — unique product structure",
+judge:"Intelligence, Personalization",
+steps:["Inputs: loan_amount, interest_rate, graduation_date","Phase 1 (study): interest-only EMI = loan_amount * rate / 12","Phase 2 (year 1 post-grad): EMI = full_emi * 0.50","Phase 3 (year 2+): EMI = full_emi (100%)","Generate full amortization schedule as JSON array [{month, emi, principal, interest, balance}]","Display as interactive EMI calendar in offer screen"]},
+
+{n:23,name:"Predictive session dropout detector",diff:"hard",crit:["intel","scale"],
+desc:"Track micro-behaviours: time per phase, retry count, hesitation duration on income question, camera resets. Logistic regression predicts dropout probability in real-time and triggers targeted interventions before the user leaves.",
+tech:"Behavioural event stream + logistic regression + intervention engine",effort:"3–4 days",impact:"Conversion rate +15–25%",
+judge:"Intelligence, Scalability",
+steps:["Event stream: log {event_type, timestamp, session_id} for every user action","Features: time_on_phase2, retry_count, audio_pause_duration, camera_reset_count","Train logistic regression on historical sessions with dropout label","Real-time: if dropout_prob > 0.65 → trigger intervention","Interventions: simplify question, show progress bar, offer human agent chat"]},
+
+{n:24,name:"Co-applicant joint video onboarding",diff:"med",crit:["digit","acc"],
+desc:"Parent or spouse joins the video session via a shared link as co-applicant. Both faces detected simultaneously, both incomes declared, combined credit profile generated. Critical for education loans where parents are co-borrowers.",
+tech:"Multi-participant WebSocket + face detection per-person + pyannote speaker diarization",effort:"4–5 days",impact:"Education loan specific — differentiates from generic products",
+judge:"Digitisation, Accuracy",
+steps:["Generate co-applicant link: POST /api/session/{id}/co-applicant","Co-applicant WebSocket: WS /ws/video/{session_id}/co — second stream in parallel","YOLO identifies 2 faces, assigns applicant1/applicant2 by screen position","Voice diarization via pyannote.audio tags income claims per speaker","Combined risk score: weighted average of both applicant scores","Offer based on combined income — show 'Joint application: Rs.X + Rs.Y = Rs.Z total'"]},
+
+{n:25,name:"Voice biometric fingerprint for returning users",diff:"hard",crit:["acc","intel"],
+desc:"Extract a voiceprint from the first session. On re-application, authenticate by voice alone — 'Say your name and last 4 digits of PAN'. Eliminates full re-KYC for existing borrowers. 10x faster repeat journey.",
+tech:"SpeechBrain speaker recognition + 256-dim voice embedding storage",effort:"3–4 days",impact:"Customer lifecycle value — repeat borrowers are most valuable",
+judge:"Accuracy, Intelligence",
+steps:["pip install speechbrain","First session: extract_voice_embedding(audio) → 256-dim vector, store in sessions","Re-application: extract new embedding from 'Say your name + last 4 PAN digits'","Cosine similarity vs stored: >0.90=VERIFIED, 0.75–0.90=OTP fallback","Verified → skip Phase 1 and Phase 2, jump directly to Phase 3","Log voice_auth_event to audit_logs — maintains compliance trail"]},
+
+{n:26,name:"LLM risk narrative generator for underwriters",diff:"med",crit:["intel","acc"],
+desc:"After the risk model runs, LLM generates a plain-English underwriter note explaining the decision: income inconsistencies, fraud signals, and recommended next steps. Replaces 30-minute manual review with a 10-second read.",
+tech:"Claude API + SHAP values + structured risk data → narrative text",effort:"1–2 days",impact:"Underwriter productivity 10x — operational efficiency",
+judge:"Intelligence, Accuracy",
+steps:["Collect: {risk_score, fraud_score, top_shap_features, transcript_flags, ocr_mismatches}","LLM prompt: 'Write a 3-sentence underwriter note explaining this risk profile'","For rejections: generate applicant-facing explanation in plain language","For reviews: generate checklist for manual underwriter to verify","Store in sessions.underwriter_summary — show in admin dashboard","Quality check: flag if LLM confidence < 0.7 for human review"]},
+
+{n:27,name:"Graph-based fraud ring detection",diff:"hard",crit:["risk"],
+desc:"Graph analysis maps connections across all sessions — same device, same IP subnet, same employer, same phone across multiple applications. Detects organized fraud rings. One bad actor flags all connected applications.",
+tech:"NetworkX + graph clustering + device fingerprint cross-reference + Celery job",effort:"5–7 days",impact:"Systemic fraud prevention — impresses judges who know enterprise fraud",
+judge:"Risk Mitigation",
+steps:["Build graph: nodes=sessions, edges=shared attributes (device, IP subnet, employer, phone)","pip install networkx — G.add_edge(session_a, session_b, shared='device_fingerprint')","Louvain community detection: networkx.algorithms.community.louvain_communities(G)","Flag: cluster_size > 3 with same device_fingerprint → FRAUD_RING alert in admin","Background Celery task: runs every 30 minutes, updates fraud_ring_flag in sessions"]},
+
+{n:28,name:"eNACH auto-debit mandate setup",diff:"med",crit:["digit","scale"],
+desc:"At offer acceptance, eNACH mandate configured in one tap via NetBanking or Aadhaar OTP. Auto-debit set up before disbursement — zero manual NACH paperwork. Loan ready to disburse immediately after acceptance.",
+tech:"NPCI eNACH API + Razorpay/BillDesk NACH + bank OTP auth",effort:"2–3 days",impact:"End-to-end digitisation — problem statement requirement",
+judge:"Digitisation, Scalability",
+steps:["POST /api/nach/initiate → generate NACH mandate form link","Applicant selects bank, authenticates via NetBanking → mandate registered","NPCI webhook calls /api/nach/callback with {mandate_id, status}","On NACH_REGISTERED: update sessions.nach_status = 'ACTIVE'","Disbursement triggered only after NACH_ACTIVE + ESIGN_SIGNED"]},
+
+{n:29,name:"Instant UPI disbursement (under 2 minutes)",diff:"med",crit:["digit","scale"],
+desc:"After sanction, disburse loan amount directly to UPI ID via IMPS in under 2 minutes. No branch visit, no cheque, no NEFT delay. Applicant receives money before the video session ends.",
+tech:"Razorpay Payouts API or NPCI IMPS + UPI ID validation",effort:"1–2 days",impact:"Same-day disbursement — product-market fit",
+judge:"Digitisation, Scalability",
+steps:["Collect UPI ID in Phase 3: 'Enter your UPI ID for instant disbursement'","Validate: Razorpay UPI validation API — confirm UPI exists","POST /api/disburse: payouts.create({fund_account: upi_id, amount: loan_amount, mode: 'UPI'})","Razorpay webhook: /api/disburse/callback with {payout_id, status}","Update session: disbursal_status, disbursal_timestamp, upi_reference_id","SMS/WhatsApp: 'Rs.X disbursed to your account. Ref: XXXXXXX'"]},
+
+{n:30,name:"CKYC registry auto-push",diff:"med",crit:["acc","digit"],
+desc:"After successful KYC, automatically push verified KYC record to India's Central KYC Registry (CERSAI). Assigns applicant a 14-digit CKYC number — future loan applications anywhere skip re-KYC entirely.",
+tech:"CERSAI CKYC API + SEBI-compliant XML + digital signature",effort:"2–3 days",impact:"Industry-standard compliance — shows NBFC domain knowledge",
+judge:"Accuracy, Digitisation",
+steps:["Format KYC record as CKYC XML per CERSAI specification","Digitally sign XML using DSC (Digital Signature Certificate)","POST to CKYC API → returns ckyc_number (14 digits)","Store ckyc_number in sessions — display to applicant as their KYC ID","Future logins: if ckyc_number exists → fetch verified data → skip KYC phases"]},
+
+{n:31,name:"Adaptive bitrate for 2G/3G rural networks",diff:"easy",crit:["scale","digit"],
+desc:"Detect applicant network bandwidth and adapt video stream quality. On slow connections (<1 Mbps), reduce frame resolution to 320x240 at 5fps — enough for liveness and face detection but 90% less data.",
+tech:"navigator.connection.downlink + adaptive canvas resolution",effort:"1–2 days",impact:"Rural India compatibility — 300M users on 2G/3G",
+judge:"Scalability, Digitisation",
+steps:["Measure: navigator.connection.downlink (Mbps)","If < 1 Mbps: canvas.width=320, canvas.height=240, frameRate=5fps","If < 0.5 Mbps: switch to photo-only mode (still frames instead of live video)","Compress: canvas.toBlob(blob, 'image/jpeg', 0.6) for 60% quality JPEG","Server: if frame_size < 15KB → use MobileNet instead of YOLO (faster inference)","UI indicator: 'Low bandwidth mode active' badge"]},
+
+{n:32,name:"Real-time confidence meter for applicant",diff:"easy",crit:["digit","intel"],
+desc:"Live animated progress ring during onboarding — 'Your profile is 78% complete'. Composite of documents verified, income confirmed, liveness cleared. Reduces drop-off anxiety significantly.",
+tech:"WebSocket confidence events → React SVG ring animation",effort:"1 day",impact:"UX → conversion rate improvement",
+judge:"Digitisation, Intelligence",
+steps:["Backend: each WebSocket response includes confidence_composite: {doc, liveness, income}","composite = (doc*0.3 + liveness*0.4 + income*0.3) * 100","Animate SVG ring: stroke-dashoffset transitions smoothly","Color: <50%=amber, 50–80%=blue, 80–100%=green","Milestones: at 50% 'Great progress!', at 90% 'Almost done!'","Never show actual risk score or fraud score to applicant"]},
+
+{n:33,name:"Session resumability + SMS recovery link",diff:"easy",crit:["digit","scale"],
+desc:"If session drops (network loss, browser close, camera failure), system saves all completed steps and sends SMS/WhatsApp recovery link. Applicant resumes from exactly where they left off — no repeat of completed phases.",
+tech:"Redis session state (TTL=24h) + Fast2SMS + state serialization",effort:"1–2 days",impact:"Drop-off recovery — improves completion rate directly",
+judge:"Digitisation, Scalability",
+steps:["Serialize session state to Redis on every phase completion","On disconnect: WebSocket close event triggers save_session_state()","Generate resume token: uuid4() → store in sessions.resume_token","SMS via Fast2SMS: 'Resume your PFL loan application: {url}?token={token}'","Resume: GET /resume?token=X → hydrate React state from Redis → jump to next phase","Show 'Welcome back!' with applicant name and progress summary"]},
+
+{n:34,name:"Dynamic question adapter via NLP",diff:"med",crit:["intel","digit"],
+desc:"Instead of a fixed form, AI skips questions already answered in speech. If applicant says 'I work at Infosys and earn 80,000' — employer, designation, and income fields auto-filled and the system moves to the next uncovered question.",
+tech:"Intent classifier + field coverage state machine",effort:"2–3 days",impact:"60% faster onboarding — dramatic UX improvement",
+judge:"Intelligence, Digitisation",
+steps:["Maintain field_coverage: {income:false, employer:false, loan_purpose:false, consent:false}","After each STT chunk: intent classifier marks covered fields","Generate next question dynamically for only uncovered fields","LLM question generator: most natural next question given covered fields","Only mark field covered if extraction_confidence > 0.80","Adjust language to match detected applicant language"]},
+
+{n:35,name:"Multi-bureau aggregation (CIBIL + Experian + CRIF)",diff:"hard",crit:["risk","acc"],
+desc:"Pull credit data from all 3 Indian bureaus simultaneously. Aggregate scores using weighted ensemble. Catches applicants with good CIBIL but bad Experian history — common in thin-file fraud.",
+tech:"3-bureau APIs + asyncio parallel calls + score aggregation",effort:"1 week",impact:"Superior risk accuracy — shows credit domain expertise",
+judge:"Risk Mitigation, Accuracy",
+steps:["asyncio.gather(cibil_pull(), experian_pull(), crif_pull()) — all 3 simultaneous","5s timeout per bureau, use available results if any times out","Score: bureau_score = (cibil*0.5 + experian*0.3 + crif*0.2)","Discrepancy: |cibil_score - experian_score| > 100 → data_mismatch_flag = True","DPD from most recent source — use whichever bureau has freshest data"]},
+
+{n:36,name:"Psychometric creditworthiness assessment",diff:"hard",crit:["intel","risk"],
+desc:"8-question adaptive psychometric test during bureau wait time. Measures financial responsibility, delay discounting, and repayment intent. Validated predictor of repayment behaviour for thin-file applicants. Used by Tata Capital and Lendingkart.",
+tech:"IRT adaptive testing engine + psychometric ML model",effort:"1–2 weeks",impact:"True alternative credit scoring — academic credibility",
+judge:"Intelligence, Risk Mitigation",
+steps:["Design 8 IRT-calibrated questions with known difficulty parameters","Example: 'Rs.10,000 today or Rs.12,000 in 1 month — which do you choose?'","CAT: next question chosen based on current score estimate","Score → financial_responsibility_index (0–100)","FRI adds ±0.05 adjustment to risk_score for thin-file applicants","Store responses — use as training data to improve model over time"]},
+
+{n:37,name:"LinkedIn OAuth employment verification",diff:"hypo",crit:["risk","intel"],
+desc:"With DPDPA-compliant consent, analyse public LinkedIn profile for employment consistency — employer, designation, duration matched against declared values. Catches inflated job titles and salary figures.",
+tech:"LinkedIn OAuth API + profile comparison + DPDPA consent",effort:"1 week (needs LinkedIn partner access)",impact:"Alternative verification — rare among NBFC startups",
+judge:"Risk Mitigation, Intelligence",
+steps:["'Verify via LinkedIn' optional button in Phase 3","LinkedIn OAuth2: scope=r_liteprofile,r_emailaddress","Pull /v2/me → {firstName, lastName, headline, positions}","Compare: current_position.company vs declared_employer, seniority vs declared_income","Consistency: exact match=+0.0 risk, partial=+0.05, mismatch=+0.15","DPDPA: explicit consent — 'We access only your job title, not posts or connections'"]},
+
+{n:38,name:"Blockchain-anchored sanction certificate",diff:"hypo",crit:["acc","digit"],
+desc:"Loan sanction letter issued as a blockchain-anchored document on Polygon. Document hash stored on-chain — anyone can verify authenticity without calling PFL. Unforgeable, shareable, instantly verifiable.",
+tech:"Polygon (MATIC) smart contract + IPFS document storage + Web3.py",effort:"1–2 weeks",impact:"Futuristic — guarantees judge attention",
+judge:"Accuracy, Digitisation",
+steps:["Generate sanction PDF with session_id, amount, rate, timestamp, applicant_hash","SHA-256 hash of the PDF","IPFS: ipfs.add(pdf_bytes) → returns CID content identifier","Smart contract: SanctionRegistry.storeCertificate(session_id, doc_hash, ipfs_cid)","Gas cost: ~$0.001 on Polygon — negligible","Applicant receives PDF + QR code linking to Polygonscan verification page"]},
+
+{n:39,name:"Real-time fraud alert push to admin",diff:"easy",crit:["risk","scale"],
+desc:"When fraud_score exceeds 0.5 during an active session, instant alert pushed to admin dashboard via Server-Sent Events. Admin sees the live session, fraud signals, and can override the decision within the video call window.",
+tech:"FastAPI SSE + admin dashboard EventSource + session live view",effort:"1 day",impact:"Real-time fraud response — ops capability judges want to see",
+judge:"Risk Mitigation, Scalability",
+steps:["FastAPI SSE: GET /api/admin/alerts/stream — keeps connection open","When fraud_score > 0.5: push SSE event {session_id, fraud_score, signals, timestamp}","Admin JS: new EventSource('/api/admin/alerts/stream').onmessage = e => showAlert(e)","Alert card: applicant name, session link, fraud signals list, current phase","Admin actions: [Override to REVIEW, Force REJECT, Join session as observer]"]},
+
+{n:40,name:"Automated RBI regulatory report generator",diff:"easy",crit:["acc","scale"],
+desc:"Monthly auto-generation of RBI NBFC reports: rejection rate by demographic, fraud detection rate, model accuracy (AUC, F1), fair lending analysis. PDF exported from admin dashboard on schedule.",
+tech:"ReportLab + SQLite analytics queries + Celery scheduled task",effort:"2 days",impact:"Compliance automation — operational maturity",
+judge:"Accuracy, Scalability",
+steps:["Celery beat: schedule on 1st of each month","SQLite: approval_rate, fraud_rate, avg_processing_time, model_auc grouped by month","Fair lending: approval rates by age_band and income_band — flag if >20% disparity","ReportLab: generate PDF with approval funnel, fraud trends, processing time charts","Admin: 'Download Last Report' button + report history table","Email to compliance@pfl.com via SMTP automatically"]},
+
+{n:41,name:"PostgreSQL + Redis + Docker horizontal scaling",diff:"hard",crit:["scale"],
+desc:"Replace SQLite with PostgreSQL, add Redis for session state, deploy behind Nginx load balancer, containerize with Docker Compose. Supports 1000+ concurrent video sessions. Problem statement explicitly requires high concurrency.",
+tech:"PostgreSQL + asyncpg + Redis + Nginx + Docker Compose + uvicorn workers",effort:"3–4 days",impact:"Judging criterion 3.5 — scalability explicitly graded",
+judge:"Scalability, Reliability",
+steps:["Migrate SQLite to PostgreSQL with asyncpg for async ORM","Redis: move session state from SQLite to Redis TTL=24h — stateless app servers","uvicorn main:app --workers 4 (matches CPU cores)","Docker Compose: {fastapi_app x3, postgres, redis, nginx_lb}","Nginx ip_hash for WebSocket sticky sessions","Admin health: GET /api/health returns {workers, queue_depth, p95_latency}"]},
+
+{n:42,name:"MLflow model versioning + A/B testing",diff:"hard",crit:["intel","scale"],
+desc:"Deploy multiple credit risk model versions simultaneously. Route 10% traffic to challenger model, track AUC differences, auto-promote winner. MLflow manages experiment tracking — production ML maturity.",
+tech:"MLflow + model registry + feature flags + metrics comparison dashboard",effort:"4–5 days",impact:"Production ML maturity — PFL engineers will recognize this",
+judge:"Intelligence, Scalability",
+steps:["pip install mlflow — set tracking URI","Log each model: mlflow.log_params(), mlflow.log_metrics({auc, f1, approval_rate})","Register champion and challenger in MLflow Model Registry","Traffic routing: feature flag {v1:0.9, v2:0.1} — 10% to challenger","Admin: side-by-side AUC, fraud_catch_rate, false_positive_rate comparison","Auto-promote: if challenger AUC > champion + 0.02 over 1000 sessions → promote"]},
+
+{n:43,name:"Lip-sync audio-visual correlation check",diff:"hard",crit:["risk","acc"],
+desc:"Verify that the person speaking in audio is the same person in the video by checking lip movement synchronization. Pre-recorded audio played over someone else's video fails this — defeats a common attack vector.",
+tech:"MediaPipe Face Mesh landmarks + librosa audio energy + Pearson correlation",effort:"3–5 days",impact:"Advanced anti-spoofing — rare in NBFC solutions",
+judge:"Risk Mitigation, Accuracy",
+steps:["MediaPipe Face Mesh: extract lip aperture (upper_lip_y - lower_lip_y) per frame","librosa.feature.rms(audio_chunk) for audio energy time series","Pearson correlation between lip_aperture and audio_energy over 5-second windows","Threshold: correlation < 0.35 over 3 windows → lip_sync_fail = True","lip_sync_fail → fraud_score += 0.35 (strong pre-recorded video signal)"]},
+
+{n:44,name:"Applicant persona-based offer personalization",diff:"med",crit:["intel"],
+desc:"LLM classifies applicant into one of 6 personas (Young Salaried, Self-Employed, Gig Worker, Student, NRI Returnee, Senior Citizen). Each gets customized offer structure, communication tone, and document requirements.",
+tech:"LLM persona classifier + persona-specific offer templates + tone adapter",effort:"2 days",impact:"Deep personalization — judging criterion 3.4 explicitly",
+judge:"Intelligence, Personalization",
+steps:["LLM: classify into [Young Salaried, Gig, Student, NRI, Senior, Self-Employed]","Each persona has {max_amount_multiplier, preferred_tenure, doc_requirements, tone}","Young Salaried: 36-month tenure, digital tone, salary slip required","Gig Worker: 18-month tenure, flexible EMI, UPI income proof accepted","Student: moratorium + graduated EMI, parent co-applicant required","Customize message: 'As a gig worker, we designed a flexible plan for your income pattern'"]},
+
+{n:45,name:"Live underwriter video session escalation",diff:"hard",crit:["scale","acc"],
+desc:"For REVIEW-band cases (like 'Suresh Kumar' in your simulation — risk 0.989 but fraud only 0.108), escalate to a live human underwriter who joins the video session as observer, asks questions, and overrides the automated decision.",
+tech:"WebSocket session sharing + underwriter queue + WebRTC observer mode",effort:"4–5 days",impact:"Human-in-the-loop hybrid — shows responsible AI design",
+judge:"Accuracy, Scalability",
+steps:["REVIEW decision: add to underwriter_queue with priority score","Underwriter dashboard: queue with {session_id, risk_score, fraud_score, transcript_preview}","'Join Session' button: underwriter connects to same WebSocket room as applicant","Underwriter types questions → displayed as text overlay in applicant UI","Override: [APPROVE] or [REJECT] with mandatory reason field","SLA: REVIEW sessions actioned within 10 minutes — alert if breached"]},
+
+{n:46,name:"Applicant financial health score dashboard",diff:"med",crit:["intel","digit"],
+desc:"After session, present personalized financial health score (separate from loan decision) showing credit utilization, repayment history, income stability, DTI ratio, and 3 actionable improvement tips. Builds trust even for rejected applicants.",
+tech:"Health scoring model + LLM tip generator + React gauge component",effort:"2–3 days",impact:"Customer retention — differentiates PFL from purely transactional lenders",
+judge:"Intelligence, Personalization",
+steps:["Compute 5 sub-scores: credit_utilization, repayment_history, income_stability, dti, credit_age","Weighted average → health_score (0–100) — separate from loan decision score","LLM: generate 3 actionable improvement tips with estimated timeline","For rejected: show minimum score needed + estimated months to qualify","React: circular gauge with sub-score breakdown rings","WhatsApp/Email: send health report post-session"]},
+
+{n:47,name:"Auto-generated session summary for underwriters",diff:"hard",crit:["intel","scale"],
+desc:"LLM analyses full video session transcript and generates a 5-bullet underwriter summary: income claims, risk flags, fraud signals, behaviour notes, recommended action. Replaces 30-minute manual review with a 10-second read.",
+tech:"Claude/GPT-4o + structured transcript + 5-bullet summary template",effort:"1–2 days",impact:"Underwriter productivity 10x",
+judge:"Intelligence, Scalability",
+steps:["POST /api/session/{id}/summarize — triggered on session completion","LLM prompt: 'Summarize this loan session in 5 bullets for an underwriter: {transcript}'","Required bullets: [Income claim+confidence, Employer+status, Risk flags, Fraud signals, Recommended action]","Store in sessions.underwriter_summary — show collapsed in admin","Quality flag: if LLM response confidence < 0.7 → human review of summary"]},
+
+{n:48,name:"Emotional journey tracking across session",diff:"hard",crit:["intel","risk"],
+desc:"Track applicant's emotional state across the entire session: confidence during identity phase, stress during income declaration, anxiety when receiving offer. Emotional trajectory is supplementary fraud and intent signal.",
+tech:"SpeechBrain SER (Speech Emotion Recognition) + FER+ facial expression + timeline",effort:"3–4 days",impact:"Unique behavioural insight — rarely seen in loan applications",
+judge:"Intelligence, Risk Mitigation",
+steps:["Audio: classify each 3s chunk as [neutral, confident, stressed, hesitant]","Video: FER+ model classifies each frame as [happy, sad, fear, disgust, neutral]","Timeline: emotion_journey = [{timestamp, audio_emotion, facial_emotion, phase}]","Risk signal: sustained stressed+hesitant during income declaration → soft fraud flag","Genuine signal: confident throughout, no stress spikes → fraud_score -= 0.05","Admin: emotion timeline chart per session for underwriter context"]},
+
+{n:49,name:"Quantum-safe encryption for biometric data",diff:"hypo",crit:["acc","scale"],
+desc:"Encrypt all video frames, voice embeddings, and biometric data using post-quantum cryptography (CRYSTALS-Kyber) — resistant to quantum computer attacks expected by 2030+. Forward-thinking security story.",
+tech:"CRYSTALS-Kyber (liboqs Python wrapper) + hybrid TLS 1.3 + AES-256",effort:"2 weeks (experimental)",impact:"Future-proof security — unique positioning",
+judge:"Accuracy, Scalability",
+steps:["pip install pyoqs — Python wrapper for Open Quantum Safe library","kem = oqs.KeyEncapsulation('Kyber512') → public_key, secret_key","Hybrid: wrap AES-256 session key with Kyber public key — backward-compatible","Encrypt all video frames before storage: aes_encrypt(frame, session_key)","Store Kyber-wrapped key in sessions — decryptable only with server's secret key","Tag as 'Quantum-Safe Ready' in demo — signal for 2030+ readiness"]},
+
+{n:50,name:"Financial literacy mini-game during wait time",diff:"hypo",crit:["intel","digit"],
+desc:"During bureau data pull wait time, show a 60-second interactive quiz: 'What is the best use of a personal loan?' Reduces perceived wait time, builds applicant trust. Literacy score feeds into offer messaging style.",
+tech:"React quiz engine + literacy score storage + adaptive messaging",effort:"2–3 days",impact:"Responsible lending signal — brand differentiation",
+judge:"Intelligence, Digitisation",
+steps:["Trigger when bureau_pull_in_progress AND phase2_complete","5 MCQ questions about loan usage, EMI calculation, CIBIL impact","Score: literacy_score = correct / 5","High literacy: technical offer language + detailed amortization table","Low literacy: simple language + visual EMI calendar + video explainer","Store literacy_score — A/B test offer messaging effectiveness"]},
+
+{n:51,name:"Sandbox testing mode for judges/demo",diff:"med",crit:["scale","acc"],
+desc:"Dedicated sandbox environment mirroring production exactly but using test bureau data, test payment rails, and test NACH. Regulators and judges can run the full flow end-to-end without real transactions. Activatable via admin toggle.",
+tech:"Environment flag + mock API providers + test data generator",effort:"1–2 days",impact:"Hackathon demo essential — judges need to run it themselves",
+judge:"Scalability, Accuracy",
+steps:["SANDBOX_MODE env var — all external APIs route to mock providers","Mock CIBIL: PAN ending 'TEST' → score 750, ending 'POOR' → score 550","Mock disbursement: logs 'SIMULATED DISBURSAL: Rs.X' without real transfer","5 pre-built test personas with known expected outcomes","Admin: sandbox/production toggle + clear red/green visual indicator","All sandbox sessions marked SANDBOX in sessions table — excluded from real analytics"]},
+
+{n:52,name:"Emotion-aware UI adaptation",diff:"hypo",crit:["intel","digit"],
+desc:"If emotion tracker detects high stress (applicant pauses frequently, facial distress), UI automatically simplifies: larger text, slower pace, shows 'Need help?' button connecting to human agent. Empathetic AI design.",
+tech:"Emotion model WebSocket events → React UI state adaptation",effort:"3–4 days",impact:"Empathetic AI — unique human-centred approach",
+judge:"Intelligence, Digitisation",
+steps:["WebSocket: emotion events pushed every 5s alongside confidence events","Stress threshold: 3 consecutive stressed chunks → trigger UI simplification","UI changes: font size +20%, slower question reveal, progress reassurance message","Confusion detection: 'what', 'sorry', 'repeat' in transcript → show text summary of last question","Human escalation: stress > 2 minutes → show 'Chat with our agent' button","Log all UI adaptations in audit_logs for accessibility compliance"]},
+
+{n:53,name:"Predictive offer acceptance optimization",diff:"hard",crit:["intel"],
+desc:"Predict probability that applicant will accept a specific offer before showing it. If acceptance probability < 40%, automatically adjust offer (lower amount, better rate, longer tenure) to maximize conversion within risk policy.",
+tech:"Logistic regression + historical acceptance data + offer parameter grid search",effort:"3–4 days",impact:"Revenue optimization — directly improves business metrics",
+judge:"Intelligence, Personalization",
+steps:["Features: [risk_score, income, loan_amount, interest_rate, tenure, persona, session_duration]","Target: offer_accepted (binary) — train on historical sessions","If acceptance_prob < 0.40 → run offer_optimizer","Optimizer: grid search {rate ±2%, tenure ±6 months} to maximize acceptance_prob within policy","Show optimized offer — log both original and optimized for A/B analysis","Track actual acceptance rate improvement in admin analytics"]},
+
+{n:54,name:"Zero-trust API security (JWT + rate limiting + mTLS)",diff:"hard",crit:["acc","scale"],
+desc:"Every endpoint requires JWT authentication, rate limiting, and request signing. WebSocket connections authenticated with short-lived tokens. Admin endpoints require TOTP MFA. Protects against external attacks and insider threats.",
+tech:"JWT + FastAPI dependencies + slowapi rate limiter + pyotp TOTP MFA",effort:"2–3 days",impact:"Security posture — critical for NBFC regulatory approval",
+judge:"Accuracy, Scalability",
+steps:["JWT: generate {session_id, exp:+30min} token on creation — all endpoints require it","slowapi: 10 req/min per IP for /api/risk/, 1 req/min for /api/bureau/","WebSocket auth: first message must include valid JWT before any frames processed","Admin MFA: TOTP via pyotp — login requires Google Authenticator code","Audit: log all auth failures to security_events — alert if >5 failures from same IP"]},
+
+{n:55,name:"Industry benchmark comparison dashboard",diff:"easy",crit:["intel","scale"],
+desc:"Admin panel showing how the system compares against industry benchmarks: processing time (industry 3–5 days vs your 10.6 seconds), fraud detection rate, approval accuracy. Quantifies value proposition for judges at a glance.",
+tech:"Static benchmark data + live session metrics + comparison chart",effort:"4 hours",impact:"Maximum judge impression — '25,000x faster than traditional'",
+judge:"All 5 criteria",
+steps:["Add 'Benchmark' tab to admin dashboard","Hardcoded industry benchmarks: {traditional_processing: '3-5 days', fraud_detection: '60%', paperless: '30%'}","Live metrics from DB: avg processing time, fraud catch rate, 100% paperless","Side-by-side bar chart: industry vs PFL Loan Wizard","Headline: '10.6 seconds vs 3 days — 25,000x faster'","Screenshot this panel for slide 8 of your presentation"]},
+
+{n:56,name:"SMOTE fairness-aware model training",diff:"hard",crit:["intel","acc"],
+desc:"Use SMOTE (Synthetic Minority Over-sampling) to balance training data across demographic groups — ensuring the credit model doesn't discriminate against women, rural applicants, or lower-income segments. Fair lending from the model itself.",
+tech:"imbalanced-learn SMOTE + Fairlearn disparate impact metric",effort:"2–3 days",impact:"Fair lending compliance — regulators and social-impact judges",
+judge:"Accuracy, Intelligence",
+steps:["Identify minority groups: female, rural, no bureau history","from imblearn.over_sampling import SMOTE; X_res, y_res = sm.fit_resample(X, y)","Retrain on balanced dataset — compare AUC and approval rates by group","Fairness: disparate_impact = min_group_approval / max_group_approval — target > 0.80","If <0.80: apply Fairlearn adversarial debiasing","Add 'Fairness Analysis' to monthly regulatory report"]},
+
+{n:57,name:"Voice stress polygon radar chart",diff:"hard",crit:["risk","intel"],
+desc:"Advanced audio analysis plotting a multi-dimensional stress polygon: pitch variation, speech rate, pause frequency, voice tremor, formant shifting on a radar chart. Polygon area correlates with deception probability. Visually memorable for judges.",
+tech:"librosa + praat-parselmouth + radar chart (Chart.js)",effort:"3–4 days",impact:"Unique fraud signal visualization — judges will remember this",
+judge:"Risk Mitigation, Intelligence",
+steps:["pip install librosa praat-parselmouth","Extract per audio chunk: pitch_variance, speech_rate, pause_freq, tremor_index, formant_shift","Normalize each to 0–1 vs session baseline (first 10 seconds)","Stress polygon area = sum of feature deviations from baseline","High area (>0.6) during income declaration = elevated deception risk","Admin: render radar chart per session — visual fraud signal for underwriters"]},
+
+{n:58,name:"SMS pre-screening eligibility filter",diff:"easy",crit:["digit"],
+desc:"Before full video session, 3-question SMS pre-check (income, employment type, loan amount). Filters ineligible applicants before consuming video infrastructure. Exactly matches the problem statement's campaign entry flow.",
+tech:"Fast2SMS + 3-question state machine + eligibility rules engine",effort:"1 day",impact:"Matches problem statement campaign entry flow — infrastructure cost saving",
+judge:"Digitisation",
+steps:["SMS: 'To apply for PFL education loan, reply with monthly income (in Rs.)'","State machine: income → employment_type → loan_amount_needed","Eligibility: income < 15000 OR loan < 10000 → 'Sorry, minimum requirements not met'","Eligible: generate unique session link, SMS 'Start your video KYC: {url}'","Pre-check data pre-fills Phase 3 — reduces video session time","Log {pre_check_passed, income_declared, employment_type} in sessions"]},
+
+{n:59,name:"Agentic loan renewal for existing borrowers",diff:"hypo",crit:["intel","digit"],
+desc:"For existing PFL borrowers with good repayment history, an AI agent proactively identifies top-up eligibility, initiates a shortened voice biometric re-verification, and disburses in under 5 minutes — fully autonomous.",
+tech:"Celery scheduled agent + repayment history analysis + voice biometric shortcut",effort:"1 week",impact:"Customer lifecycle automation — shows agentic AI capability",
+judge:"Intelligence, Digitisation",
+steps:["Celery: daily scan WHERE repayment_months >= 6 AND dpd_count = 0","Eligibility: original_risk_score < 0.3 AND 6+ on-time payments → top_up_eligible","WhatsApp: 'You qualify for Rs.X top-up. 5-minute re-verification: {link}'","Shortened flow: voice biometric authentication only — skip full KYC","Auto-disburse: voice match > 0.90 → instant IMPS transfer","Track top_up_acceptance_rate and dpd_after_topup for model feedback"]},
+
+{n:60,name:"Real-time currency OCR from video (in-call documents)",diff:"hard",crit:["acc","intel"],
+desc:"Applicant holds physical pay slip or bank statement to camera. OCR reads it in real-time during the video call — no separate upload needed. Documents shown to camera are documents processed.",
+tech:"YOLO document detector + Google Vision Document AI + sharpness selection",effort:"2–3 days",impact:"Seamless in-call document verification — unique approach",
+judge:"Digitisation, Accuracy",
+steps:["YOLO model detects 'document held to camera' pose in video frame","Capture 3 frames when document detected, select sharpest (highest Laplacian variance)","Google Vision Document AI: POST /v1/projects/{}/documents:process","Extract: {salary_amount, employer_name, pay_period, bank_account_last4}","Cross-validate: |ocr_salary - declared_income| > 20% → mismatch flag","UI: 'Document detected — reading salary slip...' with progress animation"]},
+
+{n:61,name:"Session replay for compliance review",diff:"med",crit:["acc","scale"],
+desc:"Compliance officers replay any past session as a synchronized timeline: video frames, audio transcript, ML scores, and form data all advancing together. Complete regulatory audit with second-by-second evidence.",
+tech:"Timestamp-tagged data + synchronized admin replay UI + timeline scrubber",effort:"3–4 days",impact:"Regulator-ready audit — PFL compliance team values this",
+judge:"Accuracy, Scalability",
+steps:["All events tagged {session_id, timestamp_ms} — video_frames, audit_logs, stt_chunks","GET /api/session/{id}/timeline → sorted array of all events by timestamp","Admin: timeline scrubber, play/pause, synchronized panels (video | transcript | scores)","Video reconstruction: serve video_frames by timestamp → canvas playback at 5fps","Transcript: highlight current word in sync with video","Export: ZIP of video frames + transcript PDF + audit log CSV"]},
+
+{n:62,name:"Interactive EMI comparison widget (3 offer variants)",diff:"easy",crit:["intel","digit"],
+desc:"Present 3 offer variants side-by-side (different tenure/rate combos). Applicant uses a tenure slider to see how EMI changes in real-time. Informed applicant = higher acceptance rate and lower default.",
+tech:"React offer comparison + EMI formula + interactive slider",effort:"4–6 hours",impact:"Informed choice = higher acceptance and lower default",
+judge:"Personalization, Digitisation",
+steps:["Offer engine generates 3 variants: {short high-EMI, mid balanced, long low-EMI}","3 cards side-by-side with tenure slider","EMI = P * r * (1+r)^n / ((1+r)^n - 1) — real-time calculation","Slider adjusts tenure → EMI updates with smooth animation","'Best value' badge on mid option by default","POST /api/offer/accept with chosen variant_id on selection"]},
+
+{n:63,name:"WCAG 2.1 accessibility compliance",diff:"easy",crit:["digit","scale"],
+desc:"Full WCAG 2.1 AA compliance: dark mode, screen reader support, keyboard navigation, high-contrast mode, minimum 4.5:1 contrast. Critical for elderly applicants and visually impaired — India has 8M+ visually impaired people.",
+tech:"Tailwind dark: prefix + ARIA labels + axe-core testing",effort:"1–2 days",impact:"Inclusive design — underserved segments are PFL's growth market",
+judge:"Digitisation, Scalability",
+steps:["Tailwind dark: prefix on all color classes","ARIA labels on all buttons, inputs, progress indicators","role='status' on confidence meter — announced to screen readers","Tab order follows logical phase flow throughout","High contrast toggle: 7:1 contrast ratio mode","axe-core audit: zero critical violations before demo"]},
+
+{n:64,name:"AI fraud investigation report generator",diff:"med",crit:["risk","intel"],
+desc:"For every rejected or flagged session, LLM generates a detailed fraud analysis report: exactly which signals triggered, what evidence was found, confidence-weighted explanation. Replaces manual fraud analyst review.",
+tech:"LLM + SHAP fraud scores + evidence compilation + PDF (ReportLab)",effort:"1–2 days",impact:"Fraud ops automation + compliance evidence",
+judge:"Risk Mitigation, Intelligence",
+steps:["Compile: {fraud_score, triggered_signals, ocr_mismatches, geo_anomalies, face_match_score}","LLM: 'Write a fraud investigation report for an underwriter: {data}'","Sections: Executive Summary, Evidence Detail, Risk Score Breakdown, Recommendation","Store as sessions.fraud_report_pdf — admin dashboard accessible","REVIEW queue: fraud report pre-loaded to save underwriter time","Auto-redact PII before sharing externally (replace with {REDACTED})"]},
+
+{n:65,name:"Circuit breaker pattern for external APIs",diff:"hard",crit:["scale"],
+desc:"Wrap all external calls (CIBIL, DigiLocker, AA, Razorpay) with a circuit breaker. If any service fails 3+ times, circuit opens — requests fail fast with cached fallback instead of timing out for 30+ seconds and blocking video sessions.",
+tech:"pybreaker + Redis circuit state + fallback handlers",effort:"2 days",impact:"Production reliability — prevents cascade failures during peak load",
+judge:"Scalability, Reliability",
+steps:["pip install pybreaker","@breaker.call decorator on each external API call","States: CLOSED (normal) → OPEN (failing) → HALF_OPEN (testing recovery)","Redis: store circuit state shared across all uvicorn workers","Fallback: CIBIL circuit OPEN → use last cached score (Redis TTL=24h)","Admin: circuit state indicators — immediate alert if any circuit opens"]},
+
+{n:66,name:"Hyperlocal pin code risk calibration",diff:"hard",crit:["risk","intel"],
+desc:"Calibrate risk model by applicant pin code. Historical default rates vary significantly by geography — flood-prone or economically distressed districts get a risk adjustment factor on top of the base model score.",
+tech:"Pin code risk DB (pincode → default_rate adjustment) + model calibration layer",effort:"3–4 days",impact:"Hyperlocal credit intelligence — unique India-specific feature",
+judge:"Risk Mitigation, Intelligence",
+steps:["Build pin_code_risk_db: {pincode, district, state, default_rate, adjustment_factor}","Data: RBI NBFC default rates by district + flood/drought zone maps","risk_score_final = risk_score_base * pin_code_adjustment_factor","Extreme: flood-zone PIN → cap loan at Rs.1 lakh regardless of income","Distressed zones: accept utility bills as income proof (alternate verification)","Admin: choropleth map of India colored by pin code risk factor"]},
+
+{n:67,name:"Federated learning for privacy-preserving model updates",diff:"hypo",crit:["acc","intel"],
+desc:"Train credit risk model across multiple PFL branches without sharing raw customer data. Each node trains locally, shares only model gradients with differential privacy. DPDPA-compliant collaborative learning.",
+tech:"Flower (flwr) federated learning + differential privacy (Gaussian noise)",effort:"2–3 weeks (research)",impact:"Privacy-preserving ML — academic credibility + future-proof",
+judge:"Accuracy, Intelligence",
+steps:["pip install flwr","Each branch: FL client trains on local sessions, sends gradients to central server","Differential privacy: add Gaussian noise to gradients (epsilon=1.0) before sharing","FedAvg: average gradients from all clients → new global model","Deploy updated model to all branches every 24h","No raw customer data ever leaves branch — DPDPA compliant"]},
+
+{n:68,name:"RBI repo rate auto-sync for pricing",diff:"med",crit:["intel","digit"],
+desc:"Automatically sync PFL's interest rates with RBI repo rate changes and MCLR. When RBI announces a rate cut, all pending offers repriced within 30 minutes — applicants always get the most competitive rate.",
+tech:"RBI website scraper + Celery beat + offer rate table refresh",effort:"2 days",impact:"Competitive pricing automation — business agility",
+judge:"Intelligence, Digitisation",
+steps:["Celery: check RBI website daily for repo rate announcements","BeautifulSoup: scrape rbi.org.in/Scripts/MonetaryPolicy.aspx","On rate change: update rate_config table {risk_band, new_rate}","Reprice: update all PENDING offers created <24h ago with new rates","WhatsApp to affected applicants: 'Great news! Rate reduced — your offer updated'","Log all repricing: old_rate, new_rate, affected_offer_count"]},
+
+{n:69,name:"WebP frame compression (27% bandwidth saving)",diff:"easy",crit:["scale","digit"],
+desc:"Instead of raw JPEG frames (avg 80KB each), compress to WebP format — 26% smaller at same quality. On 1000-concurrent-session deployment, reduces bandwidth by 165GB/day. Significant infrastructure cost saving.",
+tech:"canvas.toBlob('image/webp') + PIL WebP decode server-side",effort:"4 hours",impact:"Infrastructure cost reduction — direct scalability argument",
+judge:"Scalability, Digitisation",
+steps:["Frontend: canvas.toBlob(blob => sendWS(blob), 'image/webp', 0.80)","Server: Image.open(io.BytesIO(frame_bytes)) — PIL handles WebP automatically","Fallback: if browser !webp → canvas.toBlob(blob, 'image/jpeg', 0.70)","Log frame_size_bytes in video_frames — show reduction in admin dashboard","Benchmark panel: 'Avg frame: 62KB (WebP) vs 85KB (JPEG) — 27% reduction'","Cost: 1000 sessions * 120min * 2fps * 23KB saved = 165GB/day bandwidth"]},
+
+{n:70,name:"Aadhaar OTP e-sign for loan agreement",diff:"med",crit:["acc","digit"],
+desc:"After offer acceptance, generate digital loan agreement and e-sign using Aadhaar OTP (legally valid under IT Act 2000 Section 3A). Signed PDF stored with timestamp and Aadhaar reference — court-admissible loan contract.",
+tech:"eMudhra / Signzy Aadhaar e-sign API + ReportLab PDF + digital signature",effort:"2–3 days",impact:"Legally valid contract — loan is disbursable under law",
+judge:"Accuracy, Digitisation",
+steps:["Generate loan agreement PDF: ReportLab with {name, amount, rate, tenure, emi, session_id}","POST /esign/initiate → OTP sent to Aadhaar-linked mobile","Applicant enters OTP → POST /esign/verify → signed_pdf returned","Store signed PDF, record in sessions.esign_document_id","Audit: {esign_timestamp, aadhaar_hash, otp_verified, signed_doc_hash}","Disbursement gate: disburse only if esign_status='SIGNED' AND nach_status='ACTIVE'"]},
+
+{n:71,name:"Multi-region disaster recovery + auto-failover",diff:"hypo",crit:["scale"],
+desc:"Deploy across 2 AWS regions. Route53 health check auto-fails over to secondary region within 60 seconds if primary goes down. Zero data loss, <2 min downtime. Mandatory for any production NBFC system.",
+tech:"AWS Route53 + RDS Multi-AZ + Redis ElastiCache Global Datastore + S3 CRR",effort:"1 week",impact:"99.99% uptime SLA — enterprise production readiness",
+judge:"Scalability, Reliability",
+steps:["Primary: AWS Mumbai (ap-south-1), Secondary: Hyderabad (ap-south-2)","RDS PostgreSQL Multi-AZ: synchronous replication + automatic failover","Redis ElastiCache Global Datastore: async cross-region replication","S3 Cross-Region Replication for video frames and documents","Route53: health check every 10s — 3 failures → failover DNS update","RPO=0 (no data loss), RTO<2min — show in admin benchmark panel"]},
+
+{n:72,name:"Live stress-test simulation panel for judges",diff:"easy",crit:["scale","intel"],
+desc:"Admin panel letting judges trigger batch simulations of 100–1000 concurrent sessions, showing real-time latency, throughput, error rates as load increases. Live proof of scalability claims — judges love seeing numbers in real time.",
+tech:"Locust headless + real-time metrics WebSocket push + admin panel",effort:"1–2 days",impact:"Live scalability proof — judges love real numbers",
+judge:"Scalability",
+steps:["pip install locust — write locustfile.py for /api/risk/score and /ws/video","Admin: 'Stress Test' tab with user count slider (10–1000)","Launch: Locust headless with selected user count","Real-time: requests/sec, p50/p95/p99 latency, error rate → WebSocket push to admin","Auto-stop: error_rate > 5% → stop test, show 'Max capacity: X concurrent users'","Graph: latency vs concurrency — demonstrates linear scaling"]},
+
+{n:73,name:"Micro-expression fraud detection",diff:"hypo",crit:["risk","intel"],
+desc:"Detect involuntary micro-expressions lasting 1/25 of a second — revealing concealed emotions. A micro-expression of fear before a confident income answer is a strong deception signal. Used in forensic psychology worldwide.",
+tech:"MediaPipe 468 landmarks + optical flow + micro-expression ML (CASME II dataset)",effort:"2–3 weeks (research)",impact:"Most unique fraud signal — judges will remember this feature",
+judge:"Risk Mitigation, Intelligence",
+steps:["MediaPipe Face Mesh: 468 landmarks at 30fps during key questions","Optical flow: compute landmark velocity vectors between consecutive frames","Micro-expression window: velocity spikes lasting < 200ms (< 5 frames at 30fps)","CNN classifier trained on CASME II micro-expression dataset","Map emotions: fear/disgust/contempt during income declaration → deception_signal","Weight: micro-expression = 0.10 of total fraud_score (supplementary signal)"]},
+
+{n:74,name:"Offline-first PWA with background sync",diff:"hard",crit:["digit","scale"],
+desc:"Convert applicant UI to Progressive Web App with offline-first capability. If connectivity drops mid-session, app continues capturing video and audio locally, queues data, and syncs automatically on reconnection. Zero data loss on network interruption.",
+tech:"Service Worker + IndexedDB + Background Sync API + next-pwa plugin",effort:"3–4 days",impact:"Rural India resilience — works in 1-bar connectivity",
+judge:"Scalability, Digitisation",
+steps:["next-pwa plugin in next.config.js — auto-generates service worker","Service worker: intercept /api/* and /ws/* failures → queue to IndexedDB","Video buffer: store frames in IndexedDB when offline (max 50 frames = 25s)","Background Sync API: triggers when connectivity restored","On sync: replay queued API calls in order, upload buffered frames","UI: offline indicator banner — 'Working offline, syncing automatically'"]},
+
+{n:75,name:"Competitor benchmark analysis slide generator",diff:"easy",crit:["intel"],
+desc:"LLM-powered feature that automatically generates a competitive analysis comparing PFL Loan Wizard against 5 competitor products (Bajaj Finserv, HDFC, MoneyTap, etc.) across 10 dimensions. Output: ready-to-use PowerPoint slide.",
+tech:"LLM + python-pptx + competitor feature matrix",effort:"4–6 hours",impact:"Presentation ready — judges see competitive advantage immediately",
+judge:"Intelligence, All criteria",
+steps:["Build competitor feature matrix: {Bajaj, HDFC, MoneyTap, EarlySalary, KreditBee} x {video_kyc, instant_disbursal, multilingual, alternative_credit, ...}","LLM fills in competitor capabilities based on public information","Generate python-pptx slide with feature comparison table","Highlight PFL's unique features in green — gaps in red","Add as Slide 3 in hackathon presentation — 'Why we win'","Update monthly via Celery task — always current"]}
+];
+
+var current='all';
+
+function setFilter(f,btn){
+  current=f;
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+function renderList(){
+  var filtered=F.filter(function(f){
+    if(current==='all') return true;
+    return f.diff===current;
+  });
+  document.getElementById('counter').textContent='Showing '+filtered.length+' of 75 features';
+  var html='';
+  filtered.forEach(function(f){
+    var diffLbl={built:'Already built',easy:'Easy — 1-2 days',med:'Medium — 3-7 days',hard:'Hard — 1-2 weeks',hypo:'Hypothetical / Future'}[f.diff]||f.diff;
+    var diffCls={built:'t-built',easy:'t-easy',med:'t-med',hard:'t-hard',hypo:'t-hypo'}[f.diff]||'t-med';
+    var critTags=f.crit.map(function(c){
+      var lbl={digit:'Digitisation',acc:'Accuracy',risk:'Risk',intel:'Intelligence',scale:'Scalability'}[c]||c;
+      var cls='t-'+c;
+      return '<span class="tag '+cls+'">'+lbl+'</span>';
+    }).join('');
+    var stepsHtml=f.steps.map(function(s,i){
+      return '<div class="step"><div class="sdot">'+(i+1)+'</div><div class="stxt">'+s+'</div></div>';
+    }).join('');
+    html+='<div class="card">'
+      +'<div class="card-head"><span class="num">'+f.n+'</span><span class="name">'+f.name+'</span></div>'
+      +'<div class="tags">'+critTags+'<span class="tag '+diffCls+'">'+diffLbl+'</span></div>'
+      +'<div class="desc">'+f.desc+'</div>'
+      +'<div class="meta">'
+      +'<div class="meta-box"><div class="meta-lbl">Tech stack</div><div class="meta-val">'+f.tech+'</div></div>'
+      +'<div class="meta-box"><div class="meta-lbl">Effort</div><div class="meta-val">'+f.effort+'</div></div>'
+      +'<div class="meta-box meta-full"><div class="meta-lbl">Impact</div><div class="meta-val">'+f.impact+'</div></div>'
+      +'<div class="meta-box meta-full"><div class="meta-lbl">Judging criteria</div><div class="meta-val">'+f.judge+'</div></div>'
+      +'</div>'
+      +'<div class="steps-title">Step-by-step implementation</div>'
+      +stepsHtml
+      +'<div class="ask"><button onclick="sendPrompt(\'Generate complete production-ready code for: '+f.name.replace(/'/g,"\\'")+'\')">'
+      +'Generate full code ↗</button></div>'
+      +'<div class="divider"></div>'
+      +'</div>';
+  });
+  document.getElementById('list').innerHTML=html;
+}
+
+renderList();
+</script>

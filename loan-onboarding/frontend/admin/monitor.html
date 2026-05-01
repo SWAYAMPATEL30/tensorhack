@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><title>Live Monitor — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.monitor-header { display:flex; align-items:center; gap:16px; background:linear-gradient(135deg,#0f172a,#1e293b); color:white; padding:20px 24px; border-radius:12px; margin-bottom:20px; }
+.status-pill { padding:6px 16px; border-radius:999px; font-size:12px; font-weight:700; }
+.status-ok { background:#10B981; color:white; }
+.status-warn { background:#F59E0B; color:white; }
+.status-error { background:#EF4444; color:white; }
+.gauge-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+.latency-card { background:white; border-radius:10px; padding:14px; border:1px solid #e2e8f0; text-align:center; }
+.latency-val { font-size:24px; font-weight:800; margin-bottom:4px; }
+.alert-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; margin-bottom:6px; font-size:13px; }
+.alert-red { background:#fef2f2; border-left:3px solid #EF4444; color:#dc2626; }
+.alert-yellow { background:#fffbeb; border-left:3px solid #F59E0B; color:#92400e; }
+.alert-info { background:#eff6ff; border-left:3px solid #2563EB; color:#1e40af; }
+.counter-big { font-size:48px; font-weight:800; color:#2563EB; font-variant-numeric:tabular-nums; }
+.fraud-flash { animation:flash 0.5s ease; }
+@keyframes flash { 0%,100%{background:white} 50%{background:#fee2e2} }
+.action-btn { padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:#2563EB; color:white; margin-right:8px; transition:all .15s; }
+.action-btn:hover { opacity:.85; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-icon">PF</div><div><h1>Poonawalla Fincorp</h1><span>Loan Wizard AI</span></div></div>
+  <div class="sidebar-nav">
+    <a href="index.html" class="nav-item">🏠 Dashboard</a>
+    <a href="video_call.html" class="nav-item">📹 New Application</a>
+    <a href="analytics.html" class="nav-item">📊 Analytics</a>
+    <a href="model_perf.html" class="nav-item">⚡ Model Performance</a>
+    <a href="audit.html" class="nav-item">📋 Audit Trail</a>
+    <a href="monitor.html" class="nav-item active">🛡 Live Monitor</a>
+  </div>
+</nav>
+<div class="main">
+  <div class="topbar">
+    <h2>🛡 Live System Monitor</h2>
+    <div class="topbar-right">
+      <span id="uptimeDisplay" style="font-size:12px;color:#64748b"></span>
+      <button class="action-btn" onclick="runTestSession()">▶ Run Test Session</button>
+      <button class="action-btn" style="background:#10B981" onclick="exportReport()">⬇ Export Report</button>
+    </div>
+  </div>
+  <div class="content">
+    <!-- STATUS HEADER -->
+    <div class="monitor-header">
+      <div style="flex:1">
+        <div style="font-size:22px;font-weight:800;margin-bottom:4px">Mission Control — Live</div>
+        <div style="font-size:13px;opacity:.7" id="monitorTime">--</div>
+      </div>
+      <div id="systemStatus" class="status-pill status-ok">ALL SYSTEMS GO</div>
+      <div style="text-align:right">
+        <div style="font-size:11px;opacity:.5;margin-bottom:4px">Live Sessions</div>
+        <div class="counter-big" id="liveCounter" style="color:#10B981">--</div>
+      </div>
+    </div>
+
+    <!-- MODEL LATENCY GAUGES -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">⚡ Model Latency Gauges</span><span style="font-size:11px;color:#94a3b8">Updates every 2s</span></div>
+      <div class="gauge-grid" id="gaugeGrid"></div>
+    </div>
+
+    <!-- STATS + ALERTS -->
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📊 Today's Stats</span></div>
+        <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);gap:8px">
+          <div class="stat-card" style="padding:12px">
+            <div class="stat-icon blue" style="width:32px;height:32px">📋</div>
+            <div><div class="stat-label">Sessions</div><div class="stat-value" id="m-total" style="font-size:20px">—</div></div>
+          </div>
+          <div class="stat-card" style="padding:12px">
+            <div class="stat-icon green" style="width:32px;height:32px">✅</div>
+            <div><div class="stat-label">Approved</div><div class="stat-value" id="m-approved" style="font-size:20px;color:#10B981">—</div></div>
+          </div>
+          <div class="stat-card" style="padding:12px">
+            <div class="stat-icon orange" style="width:32px;height:32px">🚨</div>
+            <div><div class="stat-label">Fraud</div><div class="stat-value" id="m-fraud" style="font-size:20px;color:#F59E0B">—</div></div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:#64748b;margin-bottom:6px">System Resources</div>
+          <div class="field-row" style="display:flex;justify-content:space-between;font-size:13px">
+            <span>CPU</span><div class="meter" style="flex:1;margin:0 12px"><div class="meter-fill" id="cpuBar" style="width:10%"></div></div><span id="cpuVal">—%</span>
+          </div>
+          <div class="field-row" style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px">
+            <span>RAM</span><div class="meter" style="flex:1;margin:0 12px"><div class="meter-fill meter-green" id="ramBar" style="width:30%"></div></div><span id="ramVal">—MB</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">🚨 Active Alerts</span></div>
+        <div id="alertPanel"><div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- LIVE FEED -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">🔴 Live Session Feed</span></div>
+      <div id="monitorFeed"></div>
+    </div>
+
+    <!-- AUDIT TABLE -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 Last Audit Events</span></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Time</th><th>Session</th><th>Event</th><th>Model</th><th>Confidence</th><th>Latency</th></tr></thead>
+          <tbody id="auditFeed"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+let lastFraud = 0;
+
+async function refresh() {
+  const [health, summary, auditData] = await Promise.allSettled([
+    API.get('/api/health/detailed'),
+    API.get('/api/analytics/summary'),
+    API.get('/api/audit/logs?limit=20')
+  ]);
+
+  const h = health.status==='fulfilled' ? health.value : {};
+  const s = summary.status==='fulfilled' ? summary.value : {};
+  const a = auditData.status==='fulfilled' ? auditData.value : {};
+
+  // Header
+  document.getElementById('monitorTime').textContent = new Date().toLocaleString('en-IN');
+  document.getElementById('uptimeDisplay').textContent = `Uptime: ${formatUptime(h.uptime_seconds||0)}`;
+  document.getElementById('liveCounter').textContent = s.total_sessions || 0;
+
+  // System status
+  const alerts = h.alerts || [];
+  const hasRed = alerts.some(a => a.level==='RED');
+  const statusEl = document.getElementById('systemStatus');
+  statusEl.textContent = hasRed ? '⚠️ ALERTS ACTIVE' : '✅ ALL SYSTEMS GO';
+  statusEl.className = `status-pill ${hasRed?'status-error':'status-ok'}`;
+
+  // Stats
+  document.getElementById('m-total').textContent = s.total_sessions || 0;
+  document.getElementById('m-approved').textContent = s.approved || 0;
+  document.getElementById('m-fraud').textContent = s.fraud_detected || 0;
+
+  // Fraud flash
+  const newFraud = s.fraud_detected || 0;
+  if (newFraud > lastFraud) {
+    document.body.classList.add('fraud-flash');
+    setTimeout(() => document.body.classList.remove('fraud-flash'), 600);
+    toast(`🚨 New fraud detected!`, 'error');
+  }
+  lastFraud = newFraud;
+
+  // System resources
+  const sys = h.system || {};
+  const cpu = sys.cpu_percent || 0;
+  document.getElementById('cpuVal').textContent = cpu.toFixed(1) + '%';
+  document.getElementById('cpuBar').style.width = cpu + '%';
+  document.getElementById('cpuBar').style.background = cpu > 80 ? '#EF4444' : cpu > 60 ? '#F59E0B' : '#10B981';
+  const ram = sys.ram_used_mb || 0;
+  document.getElementById('ramVal').textContent = ram.toFixed(0) + 'MB';
+  document.getElementById('ramBar').style.width = Math.min(ram/16000*100, 100) + '%';
+
+  // Gauge grid
+  const models = h.models || {};
+  document.getElementById('gaugeGrid').innerHTML = Object.entries(models).map(([nm, ms]) => {
+    const lat = ms.latency_ms || 0;
+    const color = lat > 2000 ? '#EF4444' : lat > 500 ? '#F59E0B' : '#10B981';
+    const loaded = ms.loaded !== false;
+    return `<div class="latency-card">
+      <div class="latency-val" style="color:${color}">${lat.toFixed(0)}<span style="font-size:12px;font-weight:400">ms</span></div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:6px">${nm}</div>
+      <div style="font-size:10px"><span class="status-dot ${loaded?'status-ok':'status-error'}"></span>${ms.predictions_today||0} today</div>
+      <div class="latency-bar"><div class="latency-fill" style="width:${Math.min(lat/500*100,100)}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Alerts
+  const alertHtml = alerts.length ? alerts.map(al => `
+    <div class="alert-item ${al.level==='RED'?'alert-red':al.level==='YELLOW'?'alert-yellow':'alert-info'}">
+      ${al.level==='RED'?'🔴':'⚠️'} ${al.message}
+    </div>`).join('') : '<div class="alert-item alert-info">ℹ️ No active alerts. System healthy.</div>';
+  document.getElementById('alertPanel').innerHTML = alertHtml;
+
+  // Feed
+  const sessions = s.recent_sessions || [];
+  document.getElementById('monitorFeed').innerHTML = sessions.slice(0,8).map(sess => `
+    <div class="live-item">
+      <div class="live-avatar">${(sess.applicant_name||'UK')[0]}</div>
+      <div class="live-info">
+        <div class="live-name">${sess.applicant_name||'Unknown'}</div>
+        <div class="live-meta">${formatDate(sess.created_at)} · ${(sess.session_id||'').slice(0,8)}...</div>
+      </div>
+      <span class="${getBadgeClass(sess.decision||'active')}">${sess.decision||'Active'}</span>
+      <span style="font-size:13px;font-weight:600">${formatINR(sess.offer_amount)}</span>
+    </div>`).join('') || '<div style="text-align:center;padding:24px;color:#94a3b8">No sessions yet</div>';
+
+  // Audit table
+  const logs = a.logs || [];
+  const EVENT_CLR = { SESSION_START:'blue', SESSION_END:'gray', INTENT:'blue', RISK_SCORE:'orange', FRAUD_CHECK:'red', OFFER_GEN:'green' };
+  document.getElementById('auditFeed').innerHTML = logs.slice(0,15).map(l => `
+    <tr>
+      <td style="font-size:11px;color:#64748b">${formatDate(l.timestamp)}</td>
+      <td><code style="font-size:10px;color:#2563eb">${(l.session_id||'').slice(0,8)}...</code></td>
+      <td><span class="badge badge-${EVENT_CLR[l.event_type]||'gray'}">${l.event_type}</span></td>
+      <td style="font-size:12px">${l.model_used||'—'}</td>
+      <td><div class="meter" style="width:60px"><div class="meter-fill ${l.confidence>0.7?'meter-green':'meter-orange'}" style="width:${(l.confidence||0)*100}%"></div></div></td>
+      <td style="font-size:11px;color:#64748b">${(l.latency_ms||0).toFixed(0)}ms</td>
+    </tr>`).join('');
+}
+
+function formatUptime(s) {
+  const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); const sec = s%60;
+  return `${h}h ${m}m ${sec}s`;
+}
+
+async function runTestSession() {
+  toast('Running test session...', 'info');
+  try {
+    const sess = await API.post('/api/session/start', {});
+    const risk = await API.post('/api/risk/score', { session_id: sess.session_id, age:30, monthly_income:60000, employment_type:'salaried', years_employed:5, existing_loans:0, credit_score:700, emi_to_income_ratio:0.3, geo_mismatch:0, video_stress_score:0.2 });
+    await API.post('/api/offer/generate', { session_id: sess.session_id, risk_score: risk.score, income:60000, employment_type:'salaried', loan_purpose:'personal', credit_score:700 });
+    await API.post(`/api/session/${sess.session_id}/end`, {});
+    toast(`Test session complete! Risk: ${risk.risk_band}`, 'success');
+    refresh();
+  } catch(e) { toast('Test failed: ' + e.message, 'error'); }
+}
+
+function exportReport() {
+  window.open('/api/analytics/summary');
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body></html>

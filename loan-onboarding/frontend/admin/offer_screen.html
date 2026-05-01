@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loan Offer — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.offer-header { text-align:center; padding:32px 0 16px; }
+.risk-banner { display:inline-flex; align-items:center; gap:10px; padding:10px 24px; border-radius:999px; font-weight:700; font-size:14px; margin-top:8px; }
+.shap-section { background:white; border-radius:12px; padding:24px; margin-bottom:20px; border:1px solid #e2e8f0; }
+.tip { background:#f0fdf4; border-left:4px solid #10B981; padding:12px 16px; border-radius:0 8px 8px 0; margin:6px 0; font-size:13px; color:#166534; }
+.action-bar { display:flex; justify-content:center; gap:16px; margin-top:24px; }
+</style>
+</head>
+<body>
+<div class="main">
+  <div class="topbar">
+    <a href="video_call.html" style="font-size:13px;color:#2563eb;text-decoration:none;margin-right:16px">← Back to Call</a>
+    <h2>🎯 Personalized Loan Offer</h2>
+    <div class="topbar-right"><a href="index.html" class="btn btn-ghost">Dashboard</a></div>
+  </div>
+  <div class="content">
+    <div class="offer-header">
+      <div style="font-size:40px">🏦</div>
+      <h2 style="font-size:24px;font-weight:800;margin-top:8px" id="applicantName">Loading applicant...</h2>
+      <div class="risk-banner badge-green" id="riskBanner">Calculating risk...</div>
+      <div style="font-size:13px;color:#64748b;margin-top:12px" id="sessionInfo"></div>
+    </div>
+
+    <!-- OFFER CARDS -->
+    <div class="offer-grid" id="offerGrid">
+      <div class="offer-card" style="height:300px;display:flex;align-items:center;justify-content:center;color:#94a3b8">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- SHAP EXPLANATION -->
+    <div class="shap-section">
+      <div class="card-header"><span class="card-title">📊 What Drove Your Offer (AI Explanation)</span></div>
+      <div id="shapBars">
+        <div style="color:#94a3b8;font-size:13px">Loading AI explanation...</div>
+      </div>
+    </div>
+
+    <!-- LLM EXPLANATION -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">💬 Why You Got This Offer</span></div>
+      <p id="llmSummary" style="font-size:14px;color:#374151;line-height:1.7">Loading...</p>
+      <div style="margin-top:16px">
+        <div class="mini-title" style="margin-bottom:10px">How to improve your offer next time:</div>
+        <div id="improveTips"></div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-success" style="padding:14px 32px;font-size:15px" onclick="acceptOffer()">✅ Accept Offer</button>
+      <button class="btn btn-ghost" style="padding:14px 32px;font-size:15px" onclick="window.location.href='video_call.html'">📞 Schedule Callback</button>
+      <button class="btn btn-danger" style="padding:14px 32px;font-size:15px" onclick="declineOffer()">❌ Decline</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const sessionId = params.get('session') || sessionStorage.getItem('currentSession');
+const riskData = JSON.parse(sessionStorage.getItem('riskData') || '{}');
+
+const SHAP_DATA = [
+  { feature: 'Monthly Income', value: 2.1, dir: 1 },
+  { feature: 'Credit Score', value: 1.8, dir: 1 },
+  { feature: 'Employment Type', value: 1.3, dir: 1 },
+  { feature: 'Years Employed', value: 0.9, dir: 1 },
+  { feature: 'Existing EMIs', value: 0.6, dir: -1 },
+  { feature: 'Stress Score', value: 0.3, dir: -1 },
+];
+
+async function init() {
+  if (!sessionId) {
+    document.getElementById('applicantName').textContent = 'Demo Applicant';
+    await loadOffers({ session_id: null, risk_score: 0.15, income: 85000, employment_type: 'salaried', loan_purpose: 'home', credit_score: 720 });
+    return;
+  }
+  try {
+    const sess = await API.get(`/api/session/${sessionId}`);
+    document.getElementById('applicantName').textContent = sess.applicant_name || 'Valued Applicant';
+    document.getElementById('sessionInfo').textContent = `Session: ${sessionId.slice(0,12)}... · ${new Date().toLocaleString('en-IN')}`;
+
+    const band = riskData.risk_band || sess.risk_band || 'LOW';
+    const banner = document.getElementById('riskBanner');
+    const colors = { LOW: { bg: '#dcfce7', color: '#16a34a' }, MEDIUM: { bg: '#fef9c3', color: '#ca8a04' }, HIGH: { bg: '#fee2e2', color: '#dc2626' } };
+    const c = colors[band] || colors.LOW;
+    banner.style.background = c.bg; banner.style.color = c.color;
+    banner.textContent = `🎯 Risk Band: ${band}`;
+
+    await loadOffers({
+      session_id: sessionId,
+      risk_score: riskData.score || sess.default_probability || 0.15,
+      income: sess.monthly_income || 60000,
+      employment_type: sess.employment_type || 'salaried',
+      loan_purpose: sess.loan_purpose || 'personal',
+      credit_score: sess.credit_score || 700
+    });
+  } catch(e) {
+    console.error(e);
+    await loadOffers({ risk_score: 0.15, income: 60000, employment_type: 'salaried', loan_purpose: 'personal', credit_score: 700 });
+  }
+}
+
+async function loadOffers(payload) {
+  const data = await API.post('/api/offer/generate', payload);
+  renderOffers(data);
+  renderShap();
+  await loadLLMExplanation(data);
+}
+
+function renderOffers(data) {
+  const offers = data.offers || [];
+  const html = offers.map((o, i) => `
+    <div class="offer-card ${i===0?'recommended':''}">
+      ${i===0?'<div class="offer-rec-badge">⭐ RECOMMENDED</div>':''}
+      <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em">${o.product}</div>
+      <div class="offer-amount">${formatINR(o.amount)}</div>
+      <div class="offer-meta">Pre-approved loan amount</div>
+      <div class="offer-detail"><span class="label">Interest Rate</span><span class="value">${o.rate}% p.a.</span></div>
+      <div class="offer-detail"><span class="label">Tenure</span><span class="value">${o.tenure_months} months</span></div>
+      <div class="offer-detail"><span class="label">Monthly EMI</span><span class="value" style="color:#2563eb;font-size:16px">${formatINR(o.emi)}/mo</span></div>
+      <div class="offer-detail"><span class="label">Approval Prob.</span><span class="value" style="color:#10B981">${(o.approval_probability*100).toFixed(0)}%</span></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="selectOffer(${i})">Select This Offer</button>
+    </div>`).join('');
+  document.getElementById('offerGrid').innerHTML = html;
+}
+
+function renderShap() {
+  const max = Math.max(...SHAP_DATA.map(d => Math.abs(d.value)));
+  const html = SHAP_DATA.map(d => {
+    const pct = (Math.abs(d.value)/max) * 45;
+    const color = d.dir > 0 ? '#10B981' : '#EF4444';
+    const sign = d.dir > 0 ? '+' : '-';
+    return `<div class="shap-row">
+      <div class="shap-feature">${d.feature}</div>
+      <div class="shap-bar-wrap" style="height:16px">
+        <div style="position:absolute;${d.dir>0?'right:50%':'left:50%'};width:${pct}%;height:100%;background:${color};border-radius:3px;opacity:.8"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#94a3b8"></div>
+      </div>
+      <div class="shap-value" style="color:${color}">${sign}${d.value}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('shapBars').innerHTML = html;
+}
+
+async function loadLLMExplanation(offerData) {
+  try {
+    const exp = await API.post('/api/llm/generate-explanation', {
+      offer: offerData.offers?.[0] || {}, applicant: {}, risk: riskData
+    });
+    document.getElementById('llmSummary').textContent = exp.plain_english_summary;
+    document.getElementById('improveTips').innerHTML = exp.improvement_tips.map(t => `<div class="tip">💡 ${t}</div>`).join('');
+  } catch(e) {}
+}
+
+function selectOffer(i) { toast(`Offer ${i+1} selected! Processing acceptance...`, 'success'); }
+function acceptOffer() { toast('🎉 Offer accepted! Document verification will begin shortly.', 'success'); setTimeout(() => window.location.href = 'index.html', 2500); }
+function declineOffer() { if (confirm('Are you sure you want to decline this offer?')) window.location.href = 'index.html'; }
+
+init();
+</script>
+</body>
+</html>

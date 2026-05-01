@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><title>Analytics — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head><body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-icon">PF</div><div><h1>Poonawalla Fincorp</h1><span>Loan Wizard AI</span></div></div>
+  <div class="sidebar-nav">
+    <a href="index.html" class="nav-item">🏠 Dashboard</a>
+    <a href="video_call.html" class="nav-item">📹 New Application</a>
+    <a href="applicant_profile.html" class="nav-item">👥 All Applicants</a>
+    <a href="analytics.html" class="nav-item active">📊 Risk Analytics</a>
+    <a href="model_perf.html" class="nav-item">⚡ Model Performance</a>
+    <a href="audit.html" class="nav-item">📋 Audit Trail</a>
+    <a href="monitor.html" class="nav-item">🛡 Live Monitor</a>
+  </div>
+</nav>
+<div class="main">
+  <div class="topbar"><h2>📊 Risk Analytics</h2>
+    <div class="topbar-right"><span class="clock" id="clock"></span><button class="btn btn-ghost" onclick="document.body.classList.toggle('dark')">🌙</button></div>
+  </div>
+  <div class="content">
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><span class="card-title">Risk Score Distribution</span></div><canvas id="riskHistChart" height="220"></canvas></div>
+      <div class="card"><div class="card-header"><span class="card-title">Approval Rate by Employment Type</span></div><canvas id="employChart" height="220"></canvas></div>
+    </div>
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><span class="card-title">Model Accuracy Trend (All 6 Models)</span></div><canvas id="accuracyChart" height="220"></canvas></div>
+      <div class="card"><div class="card-header"><span class="card-title">Loan Amount vs Income</span></div><canvas id="scatterChart" height="220"></canvas></div>
+    </div>
+    <div class="card"><div class="card-header"><span class="card-title">Fraud Detection Rate Trend (Last 7 Days)</span></div><canvas id="fraudTrendChart" height="120"></canvas></div>
+  </div>
+</div>
+<script src="js/api.js"></script>
+<script>
+setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN'), 1000);
+
+const COLORS = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4'];
+
+// Risk distribution histogram
+new Chart(document.getElementById('riskHistChart'), {
+  type: 'bar',
+  data: { labels: ['0-10%','10-20%','20-30%','30-40%','40-50%','>50%'],
+    datasets: [{ label: 'Applications', data: [142,98,67,34,18,9],
+      backgroundColor: ['#10B981','#10B981','#F59E0B','#F59E0B','#EF4444','#EF4444'] }]},
+  options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+});
+
+// Approval by employment
+new Chart(document.getElementById('employChart'), {
+  type: 'bar',
+  data: { labels: ['Salaried','Self-Employed','Business','Student'],
+    datasets: [{ label: 'Approved %', data: [87,72,81,41], backgroundColor: COLORS }]},
+  options: { plugins:{legend:{display:false}}, scales:{y:{max:100,ticks:{callback:v=>v+'%'}}} }
+});
+
+// Accuracy trend
+const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+new Chart(document.getElementById('accuracyChart'), {
+  type: 'line',
+  data: { labels: days, datasets: [
+    { label: 'Credit Risk', data: [95.4,95.1,95.6,95.3,95.4,95.8,95.5], borderColor: '#2563EB', tension: 0.3 },
+    { label: 'Fraud', data: [96.6,96.2,96.8,96.5,96.7,97.0,96.6], borderColor: '#EF4444', tension: 0.3 },
+    { label: 'Intent', data: [86.1,85.8,86.3,86.0,86.4,86.2,86.1], borderColor: '#10B981', tension: 0.3 },
+  ]},
+  options: { plugins:{legend:{position:'bottom'}}, scales:{y:{min:80,max:100,ticks:{callback:v=>v+'%'}}} }
+});
+
+// Scatter: income vs loan
+const scatter = Array.from({length:80},() => ({x:Math.floor(20000+Math.random()*200000), y:Math.floor(50000+Math.random()*1500000)}));
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: { datasets: [{ label: 'Applicant', data: scatter, backgroundColor: '#2563EB44', borderColor: '#2563EB', pointRadius: 4 }]},
+  options: { scales:{x:{title:{display:true,text:'Monthly Income (₹)'}}, y:{title:{display:true,text:'Loan Amount (₹)'}}} }
+});
+
+// Fraud trend
+new Chart(document.getElementById('fraudTrendChart'), {
+  type: 'line',
+  data: { labels: days, datasets: [{ label: 'Fraud Rate %', data: [4.2,5.1,3.8,4.6,5.0,4.1,3.9], borderColor: '#EF4444', backgroundColor: '#EF444415', fill: true, tension: 0.3 }]},
+  options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}} }
+});
+</script></body></html>

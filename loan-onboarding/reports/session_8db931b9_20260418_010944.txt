@@ -1,0 +1,27 @@
+
+=================================================================
+POONAWALLA FINCORP — SESSION REPORT
+=================================================================
+Session ID      : 8db931b9-21db-4131-9ba1-4dd019cbb57d
+Applicant       : Rajesh Kumar
+Profile Type    : NORMAL
+Date/Time       : 2026-04-18 01:09:44
+─────────────────────────────────────────────────────────────────
+DECISION        : APPROVED
+Risk Band       : LOW
+Default Prob    : 0.051
+Fraud Score     : 0.000
+Fraud Verdict   : CLEAR
+─────────────────────────────────────────────────────────────────
+OFFER
+  Product       : Personal Loan
+  Amount        : Rs.40,000
+  Rate          : 12.5% p.a.
+  Tenure        : 36 months
+  Monthly EMI   : Rs.1,338
+─────────────────────────────────────────────────────────────────
+EXTRACTED DATA
+  Income        : Rs.8,000/mo
+  Profession    : Ca
+  Form Fields   : {'name': 'Rajesh Kumar', 'income': 8000, 'profession': 'Ca', 'loan_purpose': 'vehicle'}
+─────────────────────────────────────────────────────────────────

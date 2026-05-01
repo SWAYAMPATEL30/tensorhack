@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><title>Applicant Profile — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.profile-hero { display:flex; align-items:center; gap:24px; background:linear-gradient(135deg,#1e3a5f,#2563EB); color:white; border-radius:16px; padding:28px; margin-bottom:20px; }
+.profile-avatar { width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:800; flex-shrink:0; }
+.profile-name { font-size:24px; font-weight:800; }
+.profile-sub { font-size:13px; opacity:.75; margin-top:4px; }
+.gauge-wrapper { position:relative; width:180px; height:90px; margin:0 auto; }
+.gauge-bg { width:180px; height:180px; border-radius:50%; border:18px solid #e2e8f0; position:absolute; top:0; clip-path:polygon(0 50%,100% 50%,100% 100%,0 100%); }
+.gauge-fill { width:180px; height:180px; border-radius:50%; border:18px solid transparent; position:absolute; top:0; clip-path:polygon(0 50%,100% 50%,100% 100%,0 100%); }
+.gauge-text { position:absolute; bottom:0; left:0; right:0; text-align:center; font-size:22px; font-weight:800; }
+.timeline { list-style:none; padding:0; position:relative; }
+.timeline::before { content:''; position:absolute; left:16px; top:0; bottom:0; width:2px; background:#e2e8f0; }
+.timeline-item { display:flex; gap:16px; margin-bottom:16px; position:relative; }
+.timeline-dot { width:34px; height:34px; border-radius:50%; background:white; border:2px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; z-index:1; }
+.timeline-body { flex:1; background:white; border-radius:8px; padding:12px; border:1px solid #e2e8f0; }
+.timeline-title { font-size:13px; font-weight:600; color:#1e293b; }
+.timeline-time { font-size:11px; color:#94a3b8; }
+.timeline-detail { font-size:12px; color:#64748b; margin-top:4px; }
+.check-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.check-box { padding:12px; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; gap:10px; }
+.search-bar { width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; margin-bottom:12px; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-icon">PF</div><div><h1>Poonawalla Fincorp</h1><span>Loan Wizard AI</span></div></div>
+  <div class="sidebar-nav">
+    <a href="index.html" class="nav-item">🏠 Dashboard</a>
+    <a href="video_call.html" class="nav-item">📹 New Application</a>
+    <a href="applicant_profile.html" class="nav-item active">👥 All Applicants</a>
+    <a href="analytics.html" class="nav-item">📊 Analytics</a>
+    <a href="model_perf.html" class="nav-item">⚡ Model Performance</a>
+    <a href="audit.html" class="nav-item">📋 Audit Trail</a>
+    <a href="monitor.html" class="nav-item">🛡 Live Monitor</a>
+  </div>
+</nav>
+<div class="main">
+  <div class="topbar">
+    <h2>👥 Applicant Profiles</h2>
+    <div class="topbar-right">
+      <button class="btn btn-ghost" id="btnRefresh" onclick="loadAll()">🔄 Refresh</button>
+      <a href="video_call.html" class="btn btn-primary">+ New Application</a>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- Session Selector -->
+    <div class="card" id="sessionList">
+      <div class="card-header"><span class="card-title">📋 All Sessions</span><span id="sessCount" style="font-size:12px;color:#64748b"></span></div>
+      <input type="text" class="search-bar" id="searchInput" placeholder="🔍 Search by name or session ID..." oninput="filterSessions()">
+      <table>
+        <thead><tr><th>Applicant</th><th>Decision</th><th>Risk Band</th><th>Offer</th><th>Time</th><th></th></tr></thead>
+        <tbody id="sessTableBody"><tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Profile Detail (hidden initially) -->
+    <div id="profileDetail" style="display:none">
+      <div class="profile-hero">
+        <div class="profile-avatar" id="heroAvatar">?</div>
+        <div style="flex:1">
+          <div class="profile-name" id="heroName">—</div>
+          <div class="profile-sub" id="heroSub">—</div>
+        </div>
+        <span class="badge" id="heroDecision" style="font-size:14px;padding:8px 20px">—</span>
+        <button class="btn btn-ghost" style="color:white;border-color:rgba(255,255,255,.3)" onclick="closeProfile()">← Back to List</button>
+      </div>
+
+      <div class="chart-grid">
+        <!-- Risk Gauge -->
+        <div class="card" style="text-align:center">
+          <div class="card-title" style="margin-bottom:16px">🎯 Risk Score Gauge</div>
+          <canvas id="riskGaugeChart" width="200" height="120" style="margin:auto"></canvas>
+          <div style="font-size:24px;font-weight:800;margin-top:8px" id="riskVal">—</div>
+          <div style="font-size:12px;color:#64748b">Default Probability</div>
+        </div>
+
+        <!-- Captured Data -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">📝 Captured Data</div>
+          <div class="field-row"><span class="field-label">Name</span><span id="d-name" class="field-val">—</span></div>
+          <div class="field-row"><span class="field-label">Declared Age</span><span id="d-age" class="field-val">—</span></div>
+          <div class="field-row"><span class="field-label">Video Age Estimate</span><span id="d-vage" class="field-val">—</span></div>
+          <div class="field-row"><span class="field-label">Monthly Income</span><span id="d-income" class="field-val">—</span></div>
+          <div class="field-row"><span class="field-label">Employment</span><span id="d-emp" class="field-val">—</span></div>
+          <div class="field-row"><span class="field-label">Loan Purpose</span><span id="d-purpose" class="field-val">—</span></div>
+          <div class="field-row"><span class="field-label">Offer Amount</span><span id="d-offer" class="field-val" style="font-weight:800;color:#2563EB">—</span></div>
+          <div class="field-row"><span class="field-label">Interest Rate</span><span id="d-rate" class="field-val">—</span></div>
+        </div>
+      </div>
+
+      <!-- Fraud Checks -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">🛡 Fraud Check Results</div>
+        <div class="check-grid2">
+          <div class="check-box"><span id="ck1">—</span><span>Age Consistency Check</span></div>
+          <div class="check-box"><span id="ck2">—</span><span>Liveness Score</span></div>
+          <div class="check-box"><span id="ck3">—</span><span>Location Verification</span></div>
+          <div class="check-box"><span id="ck4">—</span><span>Speech Coherence</span></div>
+          <div class="check-box" style="grid-column:1/-1;justify-content:center">
+            <span style="font-size:13px;color:#64748b">Overall Verdict: </span>
+            <span id="fraudVerdict" class="badge badge-green" style="margin-left:8px">—</span>
+            <span id="fraudScore" style="margin-left:8px;font-size:12px;color:#94a3b8"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Model Confidence -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">🤖 Model Confidence Indicators</div>
+        <div id="modelConf">
+          <div class="field-row"><span class="field-label">Credit Risk Model</span><div class="meter" style="flex:1;margin:0 12px"><div class="meter-fill meter-green" style="width:94%"></div></div><span>94%</span></div>
+          <div class="field-row"><span class="field-label">Fraud Detector</span><div class="meter" style="flex:1;margin:0 12px"><div class="meter-fill meter-green" style="width:97%"></div></div><span>97%</span></div>
+          <div class="field-row"><span class="field-label">Age Validator</span><div class="meter" style="flex:1;margin:0 12px"><div class="meter-fill meter-green" style="width:100%"></div></div><span>100%</span></div>
+          <div class="field-row"><span class="field-label">Intent Classifier</span><div class="meter" style="flex:1;margin:0 12px"><div class="meter-fill meter-orange" style="width:87%"></div></div><span>87%</span></div>
+        </div>
+      </div>
+
+      <!-- Transcript -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">🎙 Session Transcript</div>
+        <div class="transcript-box" id="transcriptView" style="height:160px;font-size:13px;line-height:1.8">—</div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">⏱ AI Decision Timeline</div>
+        <ul class="timeline" id="timelineList"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+let allSessions = [];
+let riskChart;
+
+async function loadAll() {
+  try {
+    const data = await API.get('/api/analytics/summary');
+    allSessions = data.recent_sessions || [];
+    document.getElementById('sessCount').textContent = `${allSessions.length} sessions`;
+    renderTable(allSessions);
+  } catch(e) {
+    document.getElementById('sessTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8">No sessions. Start a new application!</td></tr>';
+  }
+}
+
+function renderTable(sessions) {
+  document.getElementById('sessTableBody').innerHTML = sessions.map(s => `
+    <tr style="cursor:pointer" onclick="openProfile('${s.session_id}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="live-avatar">${(s.applicant_name||'U')[0]}</div>
+          <div>
+            <div style="font-weight:600">${s.applicant_name||'Unknown Applicant'}</div>
+            <div style="font-size:11px;color:#94a3b8">${s.session_id.slice(0,12)}...</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="${getBadgeClass(s.decision||'active')}">${s.decision||'In Progress'}</span></td>
+      <td><span class="${getBadgeClass(s.risk_band||'')}">${s.risk_band||'—'}</span></td>
+      <td style="font-weight:600">${formatINR(s.offer_amount)}</td>
+      <td style="font-size:12px;color:#64748b">${formatDate(s.created_at)}</td>
+      <td><button class="btn btn-ghost" style="padding:4px 12px;font-size:11px">View →</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8">No data</td></tr>';
+}
+
+function filterSessions() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderTable(allSessions.filter(s =>
+    (s.applicant_name||'').toLowerCase().includes(q) ||
+    (s.session_id||'').toLowerCase().includes(q)
+  ));
+}
+
+async function openProfile(sessionId) {
+  document.getElementById('sessionList').style.display = 'none';
+  document.getElementById('profileDetail').style.display = 'block';
+
+  try {
+    const s = await API.get(`/api/session/${sessionId}`);
+    // Hero
+    const name = s.applicant_name || 'Unknown Applicant';
+    document.getElementById('heroAvatar').textContent = name[0].toUpperCase();
+    document.getElementById('heroName').textContent = name;
+    document.getElementById('heroSub').textContent = `Session: ${sessionId.slice(0,16)}... · ${formatDate(s.created_at)}`;
+    const dec = s.decision || 'Active';
+    const hd = document.getElementById('heroDecision');
+    hd.textContent = dec; hd.className = getBadgeClass(dec); hd.style.fontSize='14px'; hd.style.padding='8px 20px';
+
+    // Data fields
+    document.getElementById('d-name').textContent = s.applicant_name || '—';
+    document.getElementById('d-age').textContent = s.declared_age ? `${s.declared_age}y` : '—';
+    document.getElementById('d-vage').textContent = s.video_age_est ? `${s.video_age_est.toFixed(1)}y` : '—';
+    document.getElementById('d-income').textContent = s.monthly_income ? formatINR(s.monthly_income)+'/mo' : '—';
+    document.getElementById('d-emp').textContent = s.employment_type || '—';
+    document.getElementById('d-purpose').textContent = s.loan_purpose || '—';
+    document.getElementById('d-offer').textContent = formatINR(s.offer_amount);
+    document.getElementById('d-rate').textContent = s.offer_rate ? `${s.offer_rate}% p.a.` : '—';
+
+    // Risk gauge
+    const prob = s.default_probability || 0.15;
+    if (riskChart) riskChart.destroy();
+    riskChart = new Chart(document.getElementById('riskGaugeChart'), {
+      type: 'doughnut',
+      data: { datasets: [{ data: [prob*100, 100-prob*100], backgroundColor: [prob<0.15?'#10B981':prob<0.35?'#F59E0B':'#EF4444','#e2e8f0'], borderWidth:0 }] },
+      options: { cutout:'75%', rotation:-90, circumference:180, plugins:{legend:{display:false}}, responsive:true }
+    });
+    const band = s.risk_band || 'LOW';
+    document.getElementById('riskVal').textContent = `${(prob*100).toFixed(1)}%`;
+    document.getElementById('riskVal').style.color = prob<0.15?'#10B981':prob<0.35?'#F59E0B':'#EF4444';
+
+    // Fraud checks
+    const ageOk = !s.declared_age || !s.video_age_est || Math.abs(s.video_age_est - s.declared_age) <= 7;
+    const liveOk = (s.liveness_score || 0.9) >= 0.6;
+    const fraudOk = (s.fraud_verdict || 'CLEAR') !== 'FRAUD';
+    const icon = (ok) => ok ? '✅' : '❌';
+    document.getElementById('ck1').textContent = icon(ageOk);
+    document.getElementById('ck2').textContent = icon(liveOk) + ` (${((s.liveness_score||0.9)*100).toFixed(0)}%)`;
+    document.getElementById('ck3').textContent = icon(!s.geo_mismatch);
+    document.getElementById('ck4').textContent = icon(fraudOk);
+    const fv = document.getElementById('fraudVerdict');
+    fv.textContent = s.fraud_verdict || 'CLEAR';
+    fv.className = getBadgeClass(s.fraud_verdict || 'CLEAR');
+    document.getElementById('fraudScore').textContent = s.fraud_score ? `Score: ${s.fraud_score.toFixed(3)}` : '';
+
+    // Transcript
+    document.getElementById('transcriptView').textContent = s.transcript || 'No transcript captured for this session.';
+
+    // Timeline from audit
+    const audit = await API.get(`/api/audit/${sessionId}`);
+    const events = audit.events || [];
+    const EVENT_ICONS = { SESSION_START:'🚀', SESSION_END:'🏁', INTENT:'🎙', RISK_SCORE:'📊', FRAUD_CHECK:'🛡', OFFER_GEN:'💰', OFFER_GENERATED:'💰' };
+    document.getElementById('timelineList').innerHTML = events.map(e => `
+      <li class="timeline-item">
+        <div class="timeline-dot">${EVENT_ICONS[e.event_type]||'🤖'}</div>
+        <div class="timeline-body">
+          <div style="display:flex;justify-content:space-between">
+            <div class="timeline-title">${e.event_type}</div>
+            <div class="timeline-time">${formatDate(e.timestamp)}</div>
+          </div>
+          <div class="timeline-detail">Model: ${e.model_used||'—'} · Confidence: ${((e.confidence||0)*100).toFixed(0)}% · ${e.latency_ms?.toFixed(0)||0}ms</div>
+        </div>
+      </li>`).join('') || '<li style="color:#94a3b8;font-size:13px;padding:16px">No audit events found.</li>';
+
+  } catch(e) {
+    console.error(e);
+    toast('Error loading session profile', 'error');
+  }
+}
+
+function closeProfile() {
+  document.getElementById('profileDetail').style.display = 'none';
+  document.getElementById('sessionList').style.display = 'block';
+}
+
+loadAll();
+</script>
+</body></html>

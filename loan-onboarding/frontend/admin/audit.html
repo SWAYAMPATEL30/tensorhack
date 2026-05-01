@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><title>Audit Trail — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.filter-bar { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+.filter-bar input, .filter-bar select { padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; }
+.expand-row { background:#f8fafc; }
+.expand-row td { font-size:11px; font-family:monospace; color:#475569; padding:10px 14px; }
+pre { white-space:pre-wrap; word-break:break-all; max-height:200px; overflow:auto; background:#1e293b; color:#94a3b8; padding:12px; border-radius:6px; }
+</style>
+</head><body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-icon">PF</div><div><h1>Poonawalla Fincorp</h1><span>Loan Wizard AI</span></div></div>
+  <div class="sidebar-nav">
+    <a href="index.html" class="nav-item">🏠 Dashboard</a>
+    <a href="video_call.html" class="nav-item">📹 New Application</a>
+    <a href="analytics.html" class="nav-item">📊 Risk Analytics</a>
+    <a href="model_perf.html" class="nav-item">⚡ Model Performance</a>
+    <a href="audit.html" class="nav-item active">📋 Audit Trail</a>
+    <a href="monitor.html" class="nav-item">🛡 Live Monitor</a>
+  </div>
+</nav>
+<div class="main">
+  <div class="topbar"><h2>📋 Audit Trail</h2>
+    <div class="topbar-right">
+      <button class="btn btn-ghost" onclick="exportCsv()">⬇ Export CSV</button>
+      <button class="btn btn-primary" onclick="loadLogs()">🔄 Refresh</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="filter-bar">
+        <input type="text" id="filterSession" placeholder="🔍 Filter by session ID..." oninput="filterRows()">
+        <select id="filterEvent" onchange="filterRows()">
+          <option value="">All Events</option>
+          <option>SESSION_START</option><option>SESSION_END</option>
+          <option>INTENT</option><option>RISK_SCORE</option>
+          <option>FRAUD_CHECK</option><option>OFFER_GEN</option>
+        </select>
+        <span id="logCount" style="font-size:12px;color:#64748b;margin-left:auto"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="auditTable">
+          <thead><tr><th></th><th>Time</th><th>Session ID</th><th>Event</th><th>Model</th><th>Confidence</th><th>Latency</th></tr></thead>
+          <tbody id="auditBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">Loading audit logs...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/api.js"></script>
+<script>
+let allLogs = [];
+
+async function loadLogs() {
+  try {
+    const data = await API.get('/api/audit/logs?limit=200');
+    allLogs = data.logs || [];
+    document.getElementById('logCount').textContent = `${allLogs.length} events`;
+    renderLogs(allLogs);
+  } catch(e) {
+    document.getElementById('auditBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">No audit logs yet. Run a session to generate logs.</td></tr>';
+  }
+}
+
+function filterRows() {
+  const sid = document.getElementById('filterSession').value.toLowerCase();
+  const evt = document.getElementById('filterEvent').value;
+  const filtered = allLogs.filter(l =>
+    (!sid || (l.session_id||'').toLowerCase().includes(sid)) &&
+    (!evt || l.event_type === evt)
+  );
+  renderLogs(filtered);
+}
+
+function renderLogs(logs) {
+  if (!logs.length) {
+    document.getElementById('auditBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">No matching logs</td></tr>';
+    return;
+  }
+  const EVENT_COLORS = { SESSION_START:'blue', SESSION_END:'gray', INTENT:'purple', RISK_SCORE:'orange', FRAUD_CHECK:'red', OFFER_GEN:'green' };
+  document.getElementById('auditBody').innerHTML = logs.map((l, i) => `
+    <tr onclick="toggleExpand(${i})" style="cursor:pointer">
+      <td><span style="font-size:10px;color:#94a3b8">▶</span></td>
+      <td style="font-size:11px;color:#64748b;white-space:nowrap">${formatDate(l.timestamp)}</td>
+      <td><code style="font-size:10px;color:#2563eb">${(l.session_id||'').slice(0,8)}...</code></td>
+      <td><span class="badge badge-${EVENT_COLORS[l.event_type]||'gray'}">${l.event_type||'—'}</span></td>
+      <td style="font-size:12px;color:#374151">${l.model_used||'—'}</td>
+      <td><div class="meter" style="width:80px"><div class="meter-fill ${l.confidence>0.7?'meter-green':'meter-orange'}" style="width:${(l.confidence||0)*100}%"></div></div></td>
+      <td style="font-size:11px;color:#64748b">${l.latency_ms?.toFixed(0)||0}ms</td>
+    </tr>
+    <tr id="expand-${i}" style="display:none" class="expand-row">
+      <td colspan="7">
+        <strong>Input:</strong><pre>${JSON.stringify(tryParse(l.input_data), null, 2)}</pre>
+        <strong>Output:</strong><pre>${JSON.stringify(tryParse(l.output_data), null, 2)}</pre>
+      </td>
+    </tr>`).join('');
+}
+
+function tryParse(s) { try { return JSON.parse(s); } catch { return s; } }
+function toggleExpand(i) {
+  const r = document.getElementById(`expand-${i}`);
+  r.style.display = r.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function exportCsv() {
+  const lines = ['Time,Session ID,Event,Model,Confidence,Latency(ms)'];
+  allLogs.forEach(l => lines.push(`"${l.timestamp}","${l.session_id}","${l.event_type}","${l.model_used}",${l.confidence},${l.latency_ms}`));
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `audit_${Date.now()}.csv`; a.click();
+}
+
+loadLogs();
+setInterval(loadLogs, 10000);
+</script></body></html>

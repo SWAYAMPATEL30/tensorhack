@@ -1,0 +1,33 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node
+node_modules/
+*/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Databases
+*.db
+*.sqlite3
+
+# Models / Weights
+*.pt
+*.onnx
+*.weights
+*.h5
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.exe

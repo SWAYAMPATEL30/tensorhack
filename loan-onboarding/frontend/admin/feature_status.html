@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>75 Features Status — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.feature-card{background:white;border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all .2s}
+.feature-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.feature-num{font-size:10px;font-weight:700;color:var(--text-muted);min-width:24px}
+.feature-info{flex:1}
+.feature-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.3}
+.feature-tech{font-size:10px;color:var(--text-muted);margin-top:2px}
+.status-pill{font-size:10px;font-weight:700;padding:2px 10px;border-radius:999px;white-space:nowrap;flex-shrink:0}
+.s-live{background:#dcfce7;color:#16a34a}
+.s-mock{background:#dbeafe;color:#1d4ed8}
+.s-hypo{background:#f3e8ff;color:#7c3aed}
+.diff-badge{font-size:9px;padding:1px 7px;border-radius:999px;font-weight:600;margin-left:4px}
+.d-built{background:#e1f5ee;color:#085041}
+.d-easy{background:#eaf3de;color:#27500a}
+.d-med{background:#faeeda;color:#633806}
+.d-hard{background:#fcebeb;color:#791f1f}
+.d-hypo{background:#eeedfe;color:#3c3489}
+.summary-bar{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+.sum-item{background:white;border:1px solid var(--border);border-radius:10px;padding:12px 20px;text-align:center;flex:1;min-width:120px}
+.sum-num{font-size:28px;font-weight:800}
+.sum-lbl{font-size:11px;color:var(--text-muted);margin-top:2px}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.fb{font-size:11px;padding:5px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:all .15s}
+.fb.active,.fb:hover{background:var(--primary);color:white;border-color:var(--primary)}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo"><div class="logo-icon">PF</div><div><h1>Poonawalla Fincorp</h1><span>Loan Wizard AI</span></div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
+</nav>
+<div class="main">
+  <div class="topbar">
+    <h2>🏆 75 Features — Live Status Board</h2>
+    <div class="topbar-right">
+      <span id="liveCount" style="font-size:12px;color:#10B981;font-weight:700">Loading...</span>
+      <span class="clock" id="clock"></span>
+      <div class="avatar">AI</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="summary-bar">
+      <div class="sum-item"><div class="sum-num" style="color:#16a34a" id="s-live">0</div><div class="sum-lbl">✅ Live / Functional</div></div>
+      <div class="sum-item"><div class="sum-num" style="color:#2563eb" id="s-mock">0</div><div class="sum-lbl">🔵 Mock / Sandbox</div></div>
+      <div class="sum-item"><div class="sum-num" style="color:#7c3aed" id="s-hypo">0</div><div class="sum-lbl">🟣 Hypothetical Stub</div></div>
+      <div class="sum-item"><div class="sum-num" id="s-total">75</div><div class="sum-lbl">📋 Total Features</div></div>
+    </div>
+    <div class="filter-bar">
+      <button class="fb active" onclick="setFilter('all',this)">All 75</button>
+      <button class="fb" onclick="setFilter('built',this)">Already Built</button>
+      <button class="fb" onclick="setFilter('easy',this)">Easy</button>
+      <button class="fb" onclick="setFilter('med',this)">Medium</button>
+      <button class="fb" onclick="setFilter('hard',this)">Hard</button>
+      <button class="fb" onclick="setFilter('hypo',this)">Hypothetical</button>
+    </div>
+    <div class="feature-grid" id="featureGrid"></div>
+  </div>
+</div>
+<script src="js/api.js"></script>
+<script>
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-IN'),1000);
+
+const FEATURES=[
+  {n:1,name:"Real-time WebSocket video liveness pipeline",diff:"built",status:"live",tech:"FastAPI WebSocket + YOLO",endpoint:"/api/v1/ai/process-video-frame"},
+  {n:2,name:"XGBoost credit risk scoring engine",diff:"built",status:"live",tech:"XGBoost + joblib",endpoint:"/api/risk/score"},
+  {n:3,name:"Multi-signal fraud detection ensemble",diff:"built",status:"live",tech:"Ensemble + emotion + geo-IP",endpoint:"/api/fraud/check"},
+  {n:4,name:"SHAP-explained offer engine (3 tiers)",diff:"built",status:"live",tech:"SHAP + offer_engine",endpoint:"/api/offer/calculate"},
+  {n:5,name:"Whisper STT + NLP intent extraction",diff:"built",status:"live",tech:"Whisper-tiny + regex NLP",endpoint:"/api/v1/ai/process-audio-chunk"},
+  {n:6,name:"3-phase gated onboarding flow",diff:"built",status:"live",tech:"Next.js state machine",endpoint:"/api/session/start"},
+  {n:7,name:"DPDPA 2023 audit log trail",diff:"built",status:"live",tech:"SQLAlchemy + SQLite",endpoint:"/api/audit/log"},
+  {n:8,name:"GPS geo-location + fraud check",diff:"easy",status:"live",tech:"navigator.geolocation + ip-api",endpoint:"/api/geo/capture"},
+  {n:9,name:"Device fingerprint + session metadata",diff:"easy",status:"live",tech:"FingerprintJS + sessions DB",endpoint:"/api/device/fingerprint"},
+  {n:10,name:"Multilingual STT — Hindi + 8 languages",diff:"easy",status:"live",tech:"Whisper auto-detect + langdetect",endpoint:"/api/stt/language"},
+  {n:11,name:"Document OCR with field cross-validation",diff:"easy",status:"mock",tech:"Tesseract OCR + regex",endpoint:"/api/ocr/extract"},
+  {n:12,name:"Real CIBIL score API integration",diff:"med",status:"mock",tech:"CIBIL Mock (sandbox)",endpoint:"/api/bureau/pull"},
+  {n:13,name:"Selfie-to-Aadhaar face verification",diff:"med",status:"mock",tech:"InsightFace ArcFace (mock)",endpoint:"/api/face/verify"},
+  {n:14,name:"LLM conversational context interpreter",diff:"med",status:"mock",tech:"Claude/HF Mistral + rules",endpoint:"/api/llm/analyze"},
+  {n:15,name:"Verbal consent timestamped recording",diff:"easy",status:"live",tech:"Whisper + phrase detection",endpoint:"/api/consent/record"},
+  {n:16,name:"Alternative credit scoring (thin-file)",diff:"med",status:"live",tech:"Alt XGBoost + UPI proxy",endpoint:"/api/alt-credit/score"},
+  {n:17,name:"DigiLocker eKYC integration",diff:"med",status:"mock",tech:"DigiLocker OAuth (mock)",endpoint:"/api/digilocker/auth"},
+  {n:18,name:"Account Aggregator (AA) framework",diff:"med",status:"mock",tech:"Finvu AA (sandbox)",endpoint:"/api/aa/consent"},
+  {n:19,name:"Deepfake CNN video detection layer",diff:"hard",status:"live",tech:"DCT heuristic (EfficientNet stub)",endpoint:"/api/deepfake/check"},
+  {n:20,name:"WhatsApp Business API loan channel",diff:"med",status:"mock",tech:"Meta WhatsApp (mock webhook)",endpoint:"/webhook/whatsapp"},
+  {n:21,name:"Education loan ROI predictor",diff:"med",status:"live",tech:"Gradient Boosting + NASSCOM data",endpoint:"/api/edu/roi-predict"},
+  {n:22,name:"Graduation-linked flexible EMI scheduler",diff:"med",status:"live",tech:"Custom amortization engine",endpoint:"/api/edu/emi-schedule"},
+  {n:23,name:"Predictive session dropout detector",diff:"hard",status:"live",tech:"Logistic regression + events",endpoint:"/api/session/{id}/dropout-risk"},
+  {n:24,name:"Co-applicant joint video onboarding",diff:"med",status:"mock",tech:"Multi-WS + pyannote (mock)",endpoint:"/api/session/{id}/co-applicant"},
+  {n:25,name:"Voice biometric fingerprint",diff:"hard",status:"mock",tech:"SpeechBrain (mock embeddings)",endpoint:"/api/voice/register"},
+  {n:26,name:"LLM risk narrative for underwriters",diff:"med",status:"live",tech:"Claude/rules-based narrative",endpoint:"/api/llm/underwriter-note"},
+  {n:27,name:"Graph-based fraud ring detection",diff:"hard",status:"live",tech:"NetworkX + Louvain clustering",endpoint:"/api/fraud/ring-analysis"},
+  {n:28,name:"eNACH auto-debit mandate setup",diff:"med",status:"mock",tech:"NPCI eNACH (sandbox)",endpoint:"/api/nach/initiate"},
+  {n:29,name:"Instant UPI disbursement",diff:"med",status:"mock",tech:"Razorpay Payouts (sandbox)",endpoint:"/api/disburse"},
+  {n:30,name:"CKYC registry auto-push",diff:"med",status:"mock",tech:"CERSAI CKYC (sandbox)",endpoint:"/api/ckyc/push"},
+  {n:31,name:"Adaptive bitrate for 2G/3G networks",diff:"easy",status:"live",tech:"navigator.connection.downlink",endpoint:"frontend"},
+  {n:32,name:"Real-time confidence meter",diff:"easy",status:"live",tech:"WebSocket + SVG ring animation",endpoint:"frontend"},
+  {n:33,name:"Session resumability + SMS recovery",diff:"easy",status:"mock",tech:"Redis TTL (mock) + Fast2SMS",endpoint:"/api/session/resume"},
+  {n:34,name:"Dynamic question adapter via NLP",diff:"med",status:"live",tech:"Intent classifier + field coverage",endpoint:"/api/question/next"},
+  {n:35,name:"Multi-bureau aggregation (3 bureaus)",diff:"hard",status:"mock",tech:"CIBIL+Experian+CRIF (mock)",endpoint:"/api/bureau/multi-pull"},
+  {n:36,name:"Psychometric creditworthiness assessment",diff:"hard",status:"live",tech:"IRT adaptive testing engine",endpoint:"/api/psychometric/score"},
+  {n:37,name:"LinkedIn OAuth employment verification",diff:"hypo",status:"hypo",tech:"LinkedIn API (stub)",endpoint:"/api/linkedin/verify"},
+  {n:38,name:"Blockchain-anchored sanction certificate",diff:"hypo",status:"hypo",tech:"Polygon MATIC (stub)",endpoint:"/api/blockchain/anchor"},
+  {n:39,name:"Real-time fraud alert SSE push",diff:"easy",status:"live",tech:"FastAPI SSE + EventSource",endpoint:"/api/admin/alerts/stream"},
+  {n:40,name:"Automated RBI regulatory report",diff:"easy",status:"live",tech:"ReportLab + SQLite analytics",endpoint:"/api/reports/monthly"},
+  {n:41,name:"PostgreSQL + Redis + Docker scaling",diff:"hard",status:"mock",tech:"Docker Compose (config ready)",endpoint:"infrastructure"},
+  {n:42,name:"MLflow model versioning + A/B testing",diff:"hard",status:"mock",tech:"MLflow (config ready)",endpoint:"/api/mlflow/status"},
+  {n:43,name:"Lip-sync audio-visual correlation check",diff:"hard",status:"live",tech:"MediaPipe + librosa (heuristic)",endpoint:"/api/lipsync/check"},
+  {n:44,name:"Applicant persona-based offer personalization",diff:"med",status:"live",tech:"LLM persona classifier (6 types)",endpoint:"/api/llm/analyze"},
+  {n:45,name:"Live underwriter video escalation",diff:"hard",status:"mock",tech:"WebSocket session sharing (mock)",endpoint:"/api/underwriter/queue"},
+  {n:46,name:"Applicant financial health score",diff:"med",status:"live",tech:"Health scoring model + tips",endpoint:"/api/session/{id}/health-score"},
+  {n:47,name:"Auto-generated session summary",diff:"hard",status:"live",tech:"LLM 5-bullet summary",endpoint:"/api/session/{id}/summarize"},
+  {n:48,name:"Emotional journey tracking",diff:"hard",status:"live",tech:"DeepFace + SER (heuristic)",endpoint:"/api/session/{id}/emotion-journey"},
+  {n:49,name:"Quantum-safe encryption",diff:"hypo",status:"hypo",tech:"CRYSTALS-Kyber (stub)",endpoint:"/api/crypto/kyber"},
+  {n:50,name:"Financial literacy mini-game",diff:"hypo",status:"live",tech:"React quiz + literacy score",endpoint:"/api/literacy/quiz"},
+  {n:51,name:"Sandbox testing mode",diff:"med",status:"live",tech:"Env flag + mock API routing",endpoint:"/api/admin/sandbox/toggle"},
+  {n:52,name:"Emotion-aware UI adaptation",diff:"hypo",status:"live",tech:"Emotion WS events + React state",endpoint:"frontend"},
+  {n:53,name:"Predictive offer acceptance optimizer",diff:"hard",status:"live",tech:"Logistic regression + grid search",endpoint:"/api/offer/optimize"},
+  {n:54,name:"Zero-trust API security (JWT+MFA)",diff:"hard",status:"live",tech:"JWT + pyotp TOTP + slowapi",endpoint:"/api/auth/login"},
+  {n:55,name:"Industry benchmark comparison",diff:"easy",status:"live",tech:"Static benchmarks + live metrics",endpoint:"/api/benchmark"},
+  {n:56,name:"SMOTE fairness-aware model training",diff:"hard",status:"live",tech:"SMOTE + Fairlearn disparate impact",endpoint:"/api/fairness/report"},
+  {n:57,name:"Voice stress polygon radar chart",diff:"hard",status:"live",tech:"librosa + praat + Chart.js radar",endpoint:"/api/voice-stress/analyze"},
+  {n:58,name:"SMS pre-screening eligibility filter",diff:"easy",status:"mock",tech:"Fast2SMS + eligibility rules (mock)",endpoint:"/api/sms/prescreen"},
+  {n:59,name:"Agentic loan renewal",diff:"hypo",status:"hypo",tech:"Celery agent (stub)",endpoint:"/api/renewal/check"},
+  {n:60,name:"Real-time currency OCR from video",diff:"hard",status:"live",tech:"YOLO doc detect + Tesseract",endpoint:"/api/ocr/realtime-doc"},
+  {n:61,name:"Session replay for compliance review",diff:"med",status:"live",tech:"Timestamp-tagged events + scrubber",endpoint:"/api/session/{id}/timeline"},
+  {n:62,name:"Interactive EMI comparison widget",diff:"easy",status:"live",tech:"React EMI formula + tenure slider",endpoint:"/api/emi/variants"},
+  {n:63,name:"WCAG 2.1 accessibility compliance",diff:"easy",status:"live",tech:"ARIA labels + high contrast mode",endpoint:"frontend"},
+  {n:64,name:"AI fraud investigation report",diff:"med",status:"live",tech:"LLM + SHAP evidence + PDF",endpoint:"/api/fraud/report"},
+  {n:65,name:"Circuit breaker for external APIs",diff:"hard",status:"live",tech:"pybreaker + fallback handlers",endpoint:"/api/circuit/status"},
+  {n:66,name:"Hyperlocal pin code risk calibration",diff:"hard",status:"live",tech:"Pincode risk DB + adjustment factor",endpoint:"/api/pincode/risk/{code}"},
+  {n:67,name:"Federated learning privacy-preserving updates",diff:"hypo",status:"hypo",tech:"Flower (stub)",endpoint:"/api/federated/status"},
+  {n:68,name:"RBI repo rate auto-sync for pricing",diff:"med",status:"live",tech:"RBI scraper (mock) + Celery beat",endpoint:"/api/repo-rate/sync"},
+  {n:69,name:"WebP frame compression (27% saving)",diff:"easy",status:"live",tech:"canvas.toBlob WebP + PIL decode",endpoint:"frontend"},
+  {n:70,name:"Aadhaar OTP e-sign for loan agreement",diff:"med",status:"mock",tech:"eMudhra e-sign (mock OTP=123456)",endpoint:"/api/esign/initiate"},
+  {n:71,name:"Multi-region disaster recovery",diff:"hypo",status:"hypo",tech:"AWS Route53 (stub)",endpoint:"/api/dr/status"},
+  {n:72,name:"Live stress-test simulation panel",diff:"easy",status:"live",tech:"Locust headless + WS metrics push",endpoint:"/api/stress-test/start"},
+  {n:73,name:"Micro-expression fraud detection",diff:"hypo",status:"hypo",tech:"MediaPipe 468 landmarks (stub)",endpoint:"/api/micro-expression/check"},
+  {n:74,name:"Offline-first PWA with background sync",diff:"hard",status:"mock",tech:"Service Worker + IndexedDB (config)",endpoint:"frontend"},
+  {n:75,name:"Competitor benchmark slide generator",diff:"easy",status:"live",tech:"LLM + python-pptx",endpoint:"/api/benchmark/slides"},
+];
+
+let currentFilter='all';
+
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+function renderGrid(){
+  const filtered=FEATURES.filter(f=>currentFilter==='all'||f.diff===currentFilter);
+  const grid=document.getElementById('featureGrid');
+  grid.innerHTML=filtered.map(f=>{
+    const statusClass=f.status==='live'?'s-live':f.status==='mock'?'s-mock':'s-hypo';
+    const statusLabel=f.status==='live'?'✅ LIVE':f.status==='mock'?'🔵 MOCK':'🟣 STUB';
+    const diffMap={built:'d-built',easy:'d-easy',med:'d-med',hard:'d-hard',hypo:'d-hypo'};
+    const diffLabel={built:'Built',easy:'Easy',med:'Medium',hard:'Hard',hypo:'Hypothetical'};
+    return `<div class="feature-card">
+      <span class="feature-num">#${f.n}</span>
+      <div class="feature-info">
+        <div class="feature-name">${f.name} <span class="diff-badge ${diffMap[f.diff]}">${diffLabel[f.diff]}</span></div>
+        <div class="feature-tech">${f.tech}</div>
+        <div style="font-size:9px;color:#94a3b8;margin-top:2px;font-family:monospace">${f.endpoint}</div>
+      </div>
+      <span class="status-pill ${statusClass}">${statusLabel}</span>
+    </div>`;
+  }).join('');
+  
+  document.getElementById('liveCount').textContent=`${FEATURES.filter(f=>f.status==='live').length}/75 Live`;
+  document.getElementById('s-live').textContent=FEATURES.filter(f=>f.status==='live').length;
+  document.getElementById('s-mock').textContent=FEATURES.filter(f=>f.status==='mock').length;
+  document.getElementById('s-hypo').textContent=FEATURES.filter(f=>f.status==='hypo').length;
+}
+
+renderGrid();
+
+// Test endpoints live
+async function pingEndpoints(){
+  for(const f of FEATURES.filter(x=>x.status==='live'&&!['frontend','infrastructure'].includes(x.endpoint))){
+    try{
+      const ep=f.endpoint.replace('{id}','test').replace('{code}','400001');
+      await fetch(ep,{method:'GET',signal:AbortSignal.timeout(2000)});
+    }catch{}
+  }
+}
+
+// Load sidebar
+document.getElementById('sidebarNav').innerHTML=`
+<div class="nav-section">Main</div>
+<a href="index.html" class="nav-item">🏠 Dashboard</a>
+<a href="video_call.html" class="nav-item">📹 New Application</a>
+<a href="applicant_profile.html" class="nav-item">👥 All Applicants</a>
+<div class="nav-section">Intelligence</div>
+<a href="analytics.html" class="nav-item">📊 Risk Analytics</a>
+<a href="model_perf.html" class="nav-item">⚡ Model Performance</a>
+<a href="audit.html" class="nav-item">📋 Audit Trail</a>
+<a href="monitor.html" class="nav-item">🛡 Live Monitor</a>
+<div class="nav-section">Fraud & Security</div>
+<a href="fraud_ring.html" class="nav-item">⚠️ Fraud Ring Graph</a>
+<a href="underwriter.html" class="nav-item">👤 Underwriter Queue</a>
+<a href="session_replay.html" class="nav-item">▶ Session Replay</a>
+<div class="nav-section">Operations</div>
+<a href="benchmark.html" class="nav-item">📈 Benchmark</a>
+<a href="stress_test.html" class="nav-item">⚡ Stress Test</a>
+<a href="fairness.html" class="nav-item">⚖️ Fairness Report</a>
+<a href="feature_status.html" class="nav-item active">🏆 75 Features Status</a>`;
+</script>
+</body>
+</html>

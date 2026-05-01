@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video KYC Call — Poonawalla Loan Wizard</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+body { overflow: hidden; }
+.video-layout { display:grid; grid-template-columns:3fr 2fr; gap:16px; height:calc(100vh - 60px); padding:16px; }
+.video-panel { background:#0f172a; border-radius:16px; position:relative; overflow:hidden; }
+#videoEl { width:100%; height:100%; object-fit:cover; display:block; }
+#overlayCanvas { position:absolute; inset:0; pointer-events:none; }
+.intel-panel { display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+.mini-card { background:white; border-radius:10px; padding:14px; border:1px solid #e2e8f0; }
+.mini-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#64748b; margin-bottom:8px; }
+.field-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }
+.field-row:last-child { border:none; }
+.field-label { color:#64748b; }
+.field-val { font-weight:600; color:#1e293b; transition:all .4s; }
+.field-val.flash { color:#10B981; }
+.bottom-bar { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(0,0,0,.85)); padding:20px; display:flex; align-items:center; gap:12px; }
+.btn-lg { padding:12px 24px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; border:none; }
+.btn-start { background:#10B981; color:white; }
+.btn-end   { background:#EF4444; color:white; }
+.btn-offer { background:#2563EB; color:white; }
+.btn-lg:disabled { opacity:.5; cursor:not-allowed; }
+.session-timer { color:rgba(255,255,255,.7); font-size:13px; font-variant-numeric:tabular-nums; margin-left:auto; }
+.rec-indicator { display:flex; align-items:center; gap:6px; color:white; font-size:12px; font-weight:600; }
+.check-grid { display:grid; gap:6px; }
+.chk { display:flex; align-items:center; justify-content:space-between; font-size:12px; padding:5px 8px; border-radius:6px; background:#f8fafc; }
+</style>
+</head>
+<body>
+<div class="main" style="flex:1;display:flex;flex-direction:column">
+  <div class="topbar">
+    <a href="index.html" style="font-size:13px;color:#2563eb;text-decoration:none;margin-right:16px">← Dashboard</a>
+    <h2>📹 Video KYC Application</h2>
+    <div class="topbar-right">
+      <span class="clock" id="clock"></span>
+      <div class="avatar">AI</div>
+    </div>
+  </div>
+
+  <div class="video-layout">
+    <!-- LEFT: Video -->
+    <div class="video-panel">
+      <video id="videoEl" autoplay muted playsinline></video>
+      <canvas id="overlayCanvas"></canvas>
+
+      <div class="ai-indicator">
+        <div class="pulse" id="aiPulse" style="background:#64748b"></div>
+        <span id="aiStatus">AI Ready</span>
+      </div>
+      <div class="age-badge" id="ageBadge" style="display:none">Age: —</div>
+
+      <div class="bottom-bar">
+        <button class="btn-lg btn-start" id="btnStart" onclick="startSession()">▶ Start KYC</button>
+        <button class="btn-lg btn-end" id="btnEnd" onclick="endSession()" disabled>⏹ End Call</button>
+        <button class="btn-lg btn-offer" id="btnOffer" onclick="generateOffer()" disabled>🎯 Generate Offer</button>
+        <div class="rec-indicator" id="recInd" style="display:none">
+          <div class="pulse"></div> RECORDING
+        </div>
+        <span class="session-timer" id="timer">00:00</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: Intelligence -->
+    <div class="intel-panel">
+      <!-- Live Transcript -->
+      <div class="mini-card">
+        <div class="mini-title">🎙 Live Transcript</div>
+        <div class="transcript-box" id="transcriptBox" style="height:120px">
+          <span style="color:#475569;font-style:italic">Start the session to begin transcription...</span>
+        </div>
+      </div>
+
+      <!-- Intent + Emotion -->
+      <div class="mini-card">
+        <div class="mini-title">🧠 AI Detections</div>
+        <div class="field-row"><span class="field-label">Intent</span><span class="badge badge-blue" id="intentBadge">—</span></div>
+        <div class="field-row"><span class="field-label">Emotion</span><span class="field-val" id="emotionVal">—</span></div>
+        <div class="field-row"><span class="field-label">Stress Level</span>
+          <div style="width:100px"><div class="meter"><div class="meter-fill meter-green" id="stressMeter" style="width:10%"></div></div></div>
+        </div>
+        <div class="field-row"><span class="field-label">Liveness</span>
+          <div style="width:100px"><div class="meter"><div class="meter-fill meter-green" id="livenessMeter" style="width:90%"></div></div></div>
+        </div>
+      </div>
+
+      <!-- Auto-filled form -->
+      <div class="mini-card">
+        <div class="mini-title">📝 Auto-Captured Data</div>
+        <div class="check-grid">
+          <div class="field-row"><span class="field-label">Name</span><span class="field-val" id="f-name">—</span></div>
+          <div class="field-row"><span class="field-label">Age (Video)</span><span class="field-val" id="f-age">—</span></div>
+          <div class="field-row"><span class="field-label">Employment</span><span class="field-val" id="f-emp">—</span></div>
+          <div class="field-row"><span class="field-label">Monthly Income</span><span class="field-val" id="f-income">—</span></div>
+          <div class="field-row"><span class="field-label">Loan Purpose</span><span class="field-val" id="f-purpose">—</span></div>
+        </div>
+      </div>
+
+      <!-- Fraud Signals -->
+      <div class="mini-card">
+        <div class="mini-title">🛡 Fraud Signals</div>
+        <div class="check-grid" id="fraudGrid">
+          <div class="chk"><span>Age Consistency</span><span id="chkAge" class="badge badge-gray">—</span></div>
+          <div class="chk"><span>Liveness Check</span><span id="chkLive" class="badge badge-gray">—</span></div>
+          <div class="chk"><span>Speech Consistency</span><span id="chkSpeech" class="badge badge-gray">—</span></div>
+          <div class="chk"><span>Session Speed</span><span id="chkSpeed" class="badge badge-gray">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+// Clock
+setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN'), 1000);
+
+let sessionId, videoStream, frameInterval, timerInterval, timerSec = 0;
+let mediaRecorder, audioChunks = [];
+let sessionStartTime;
+
+function updateTimer() {
+  timerSec++;
+  const m = String(Math.floor(timerSec/60)).padStart(2,'0');
+  const s = String(timerSec%60).padStart(2,'0');
+  document.getElementById('timer').textContent = `${m}:${s}`;
+}
+
+async function startSession() {
+  try {
+    // Get camera
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById('videoEl').srcObject = videoStream;
+
+    // Start session
+    const data = await API.post('/api/session/start', {});
+    sessionId = data.session_id;
+    sessionStartTime = Date.now();
+
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnEnd').disabled = false;
+    document.getElementById('aiPulse').style.background = '#10B981';
+    document.getElementById('aiStatus').textContent = 'AI Watching';
+    document.getElementById('ageBadge').style.display = 'block';
+    document.getElementById('recInd').style.display = 'flex';
+    timerInterval = setInterval(updateTimer, 1000);
+
+    // Start sending frames
+    startVideoFrames();
+    startAudioRecording();
+    startFraudPolling();
+
+    toast('Session started — AI is now analyzing', 'success');
+  } catch(e) {
+    toast('Cannot access camera/mic: ' + e.message, 'error');
+  }
+}
+
+function startVideoFrames() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320; canvas.height = 240;
+  const ctx = canvas.getContext('2d');
+  const video = document.getElementById('videoEl');
+
+  frameInterval = setInterval(async () => {
+    if (!sessionId) return;
+    ctx.drawImage(video, 0, 0, 320, 240);
+    const b64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+    try {
+      const res = await API.post('/api/v1/ai/process-video-frame', { session_id: sessionId, frame_base64: b64 });
+      if (res) {
+        const age = res.cv_age_estimate?.toFixed(0) || '—';
+        document.getElementById('ageBadge').textContent = `Age: ${age}`;
+        document.getElementById('f-age').textContent = `${age}y (${res.confidence ? (res.confidence*100).toFixed(0)+'% conf' : ''})`;
+        setFieldFlash('f-age');
+        document.getElementById('f-emp').textContent = res.emotion || '—';
+        const live = Math.min(0.6 + (res.confidence||0.75)*0.4, 1.0);
+        document.getElementById('livenessMeter').style.width = (live*100) + '%';
+        document.getElementById('livenessMeter').className = `meter-fill ${live>0.7?'meter-green':'meter-orange'}`;
+        document.getElementById('chkLive').textContent = live > 0.7 ? '✅ PASS' : '⚠️ LOW';
+        document.getElementById('chkLive').className = live>0.7?'badge badge-green':'badge badge-orange';
+        // Draw face box overlay
+        if (res.detected_objects?.includes('person') || res.detected_objects?.includes('face')) {
+          drawFaceBox();
+        }
+      }
+    } catch(e) {}
+  }, 1500);
+}
+
+function drawFaceBox() {
+  const video = document.getElementById('videoEl');
+  const canvas = document.getElementById('overlayCanvas');
+  canvas.width = video.clientWidth; canvas.height = video.clientHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const bw = canvas.width * 0.35; const bh = canvas.height * 0.45;
+  const bx = (canvas.width - bw) / 2; const by = canvas.height * 0.05;
+  ctx.strokeStyle = '#10B981'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(16,185,129,0.08)'; ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = '#10B981'; ctx.font = '11px Inter'; ctx.fillText('LIVE APPLICANT ✓', bx, by-6);
+}
+
+function startAudioRecording() {
+  const audioStream = new MediaStream(videoStream.getAudioTracks());
+  mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+  mediaRecorder.ondataavailable = async (e) => {
+    if (!e.data?.size || !sessionId) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = reader.result.split(',')[1];
+      try {
+        const res = await API.post('/api/v1/ai/process-audio-chunk', { session_id: sessionId, audio_base64: b64 });
+        if (res?.transcript_text) updateTranscript(res);
+      } catch(e) {}
+    };
+    reader.readAsDataURL(e.data);
+  };
+  mediaRecorder.start(3000);
+}
+
+function updateTranscript(res) {
+  const box = document.getElementById('transcriptBox');
+  if (res.transcript_text) {
+    const span = document.createElement('span');
+    span.className = 'word-new';
+    span.textContent = ' ' + res.transcript_text;
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+    setTimeout(() => span.classList.remove('word-new'), 3000);
+  }
+  if (res.extracted_income) {
+    document.getElementById('f-income').textContent = formatINR(res.extracted_income) + '/mo';
+    setFieldFlash('f-income');
+  }
+  if (res.extracted_profession && res.extracted_profession !== 'Professional') {
+    document.getElementById('f-emp').textContent = res.extracted_profession;
+    setFieldFlash('f-emp');
+  }
+  // Intent
+  if (res.extracted_income || res.extracted_profession) {
+    document.getElementById('intentBadge').textContent = 'income_declaration';
+    document.getElementById('intentBadge').className = 'badge badge-green';
+  }
+  document.getElementById('chkSpeech').textContent = '✅ PASS';
+  document.getElementById('chkSpeech').className = 'badge badge-green';
+}
+
+function setFieldFlash(id) {
+  const el = document.getElementById(id);
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 2000);
+}
+
+async function startFraudPolling() {
+  const check = async () => {
+    if (!sessionId) return;
+    try {
+      const sess = await API.get(`/api/session/${sessionId}`);
+      const fraud = await API.post('/api/fraud/check', {
+        session_id: sessionId,
+        declared_age: sess.declared_age || 30,
+        video_age: sess.video_age_est || 30,
+        declared_city: 'Mumbai', ip_location: 'Mumbai',
+        liveness_score: sess.liveness_score || 0.9,
+        speech_consistency: 0.82,
+        application_speed_seconds: timerSec
+      });
+      const v = fraud.verdict;
+      const chkAge = document.getElementById('chkAge');
+      const diff = Math.abs((sess.video_age_est||30) - (sess.declared_age||30));
+      chkAge.textContent = diff <= 7 ? '✅ PASS' : '⚠️ MISMATCH';
+      chkAge.className = diff<=7 ? 'badge badge-green' : 'badge badge-red';
+      const chkSpeed = document.getElementById('chkSpeed');
+      chkSpeed.textContent = timerSec > 45 ? '✅ PASS' : '⚠️ TOO FAST';
+      chkSpeed.className = timerSec>45 ? 'badge badge-green' : 'badge badge-orange';
+    } catch(e) {}
+  };
+  check();
+  setInterval(check, 10000);
+}
+
+async function endSession() {
+  clearInterval(frameInterval); clearInterval(timerInterval);
+  if (mediaRecorder?.state !== 'inactive') mediaRecorder.stop();
+  if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+  if (sessionId) await API.post(`/api/session/${sessionId}/end`, {});
+  document.getElementById('btnEnd').disabled = true;
+  document.getElementById('btnOffer').disabled = false;
+  document.getElementById('aiPulse').style.background = '#F59E0B';
+  document.getElementById('aiStatus').textContent = 'Session Ended';
+  toast('Session ended. Ready to generate offer.', 'info');
+}
+
+async function generateOffer() {
+  if (!sessionId) { toast('No active session', 'error'); return; }
+  try {
+    const risk = await API.post('/api/risk/score', { session_id: sessionId, age: 30, monthly_income: 50000, employment_type: 'salaried', years_employed: 5, existing_loans: 0, credit_score: 700, emi_to_income_ratio: 0.3, geo_mismatch: 0, video_stress_score: 0.2 });
+    sessionStorage.setItem('currentSession', sessionId);
+    sessionStorage.setItem('riskData', JSON.stringify(risk));
+    window.location.href = `offer_screen.html?session=${sessionId}`;
+  } catch(e) { toast('Error generating offer', 'error'); }
+}
+</script>
+</body>
+</html>

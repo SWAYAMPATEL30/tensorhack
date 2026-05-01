@@ -1,0 +1,905 @@
+Executive Summary
+The Agentic AI Video Call–Based Onboarding system is a complex ML-driven loan origination platform
+that integrates real-time video KYC, consent capture, computer vision, speech-to-text (STT), and language
+understanding to automate credit decisions. This report outlines a full Software Requirements Specification
+(SRS) and development plan. We begin with purpose, scope and definitions, then detail stakeholders, overall
+description, functional and non-functional requirements, data needs, constraints, and risk mitigations. We
+present a high-level architecture with a mermaid diagram, including component interactions and data flow.
+A recommended tech stack (Python/FastAPI, Next.js, PyTorch, etc.) is justified with citations. We
+propose a clean project structure with CI/CD (using GitHub Actions or similar) and an automated testing
+strategy (unit, integration, end-to-end). A detailed API specification lists REST endpoints, payload
+schemas, and auth. The ML pipeline is outlined (data preprocessing, model choice, training, metrics,
+serving, versioning) with best practices. We include deliverables, milestones and a Gantt chart
+(mermaid) plus a table of alternative design choices (e.g. FastAPI vs Flask) with trade-offs and citations
+. Finally, we provide an “Antigravity” script (a high-level bash/Python scaffold) to bootstrap the project
+codebase and infrastructure, with instructions to run it. All claims and recommendations are supported by
+authoritative sources.
+1. Software Requirements Specification (SRS)
+1.1 Purpose
+The purpose of this SRS is to define all requirements for the Video-Based Digital Loan Origination & Risk
+Assessment System. It will guide development by clearly stating what the system must do, ensuring
+alignment among stakeholders (business, legal, devs, testers) and reducing ambiguity. Specifically,
+the system must enable secure, compliant real-time customer onboarding via video, verify identity and
+intent, evaluate risk, and generate personalized loan offers automatically. 
+1.2 Scope
+The scope covers a web/mobile application with a video-call interface for loan applicants, back-end AI/ML
+services for KYC (face/ID verification, age estimation), STT and LLM-based analysis of verbal inputs, credit-
+risk evaluation using internal and external data, and offer generation. It excludes unrelated banking
+processes (e.g. loan servicing post-approval). This SRS defines both the functional requirements (what the
+system does) and non-functional requirements (how well it performs, e.g. security, scalability). 
+1.3 Definitions and Acronyms
+KYC: Know Your Customer . 
+STT: Speech-to-Text. 
+LLM: Large Language Model (e.g. GPT) used for understanding free-form speech. 
+1 2
+3 4
+5 4
+1
+6
+7 8
+7 9
+• 
+• 
+• 
+1
+CV: Computer Vision. 
+Consent Trail: A secure log of user’s verbal/electronic consents. 
+API: Application Programming Interface. 
+REST: Representational State Transfer . 
+GUI: Graphical User Interface. 
+Non-functional requirements (NFRs): Quality attributes like performance, security, maintainability
+. 
+1.4 Stakeholders
+End Users: Loan applicants who use the video onboarding. 
+Loan Officers / Business Managers: Review exceptions, configure policies. 
+Compliance Officers: Ensure regulatory adherence (KYC/AML). 
+Developers: Build and maintain the system. 
+QA/Testing Team: Validate requirements are met. 
+System Administrators/DevOps: Deploy and operate the platform. 
+Third-Party Data Providers: Credit bureaus, ID verification services. 
+1.5 Overall Description
+1.5.1 User Needs
+Users need a quick, seamless loan application process with instant decisions. They must trust the system to
+be secure and fair . Business needs include fraud reduction, compliance, and automation to reduce costs. 
+1.5.2 Assumptions and Dependencies
+Assumptions: Users have webcam/microphone and connectivity. External services (credit bureau
+APIs, identity databases, speech recognition, LLM APIs) are available. User privacy regulations
+(GDPR/KYC) will be followed. 
+Dependencies: Cloud infrastructure (e.g. AWS/GCP), third-party APIs (Twilio/Jitsi for video, Google/
+Meta ML services for STT/LLM if used), internet. 
+1.5.3 System Context
+The system interfaces with external credit bureaus and policy databases, and internally comprises front-end
+(web/mobile), back-end (API server , ML services) and database layers. Data flows from user (video,
+audio, metadata) through the back-end (CV analysis, STT, LLM, risk engine) to produce loan decisions. 
+2. System Features and Requirements
+In accordance with IEEE/ISO standards, the Specific Requirements section details system features. Each
+feature is expressed as “The system shall…”. We also include illustrative use cases. 
+• 
+• 
+• 
+• 
+• 
+• 
+9
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+10
+2
+2.1 Functional Requirements (Features)
+2.1.1 User Onboarding Video Call (Use Case)
+FR1: Real-Time Video Call: The system shall support a secure web-based video call between the user
+and an agentic AI interface. (The front-end uses WebRTC or third-party video SDK.) 
+FR2: KYC Verification: During the call, the system shall capture the user’s photo/ID and perform
+face recognition against an official ID database to confirm identity (CV module). 
+FR3: Age Verification: The system shall estimate the user’s age via facial analysis and verify it meets
+policy (e.g. age ≥ 18). 
+FR4: Verbal Consent Capture: The system shall clearly ask for explicit verbal consent for terms and
+verify using STT that consent is given; log consent transcript. 
+FR5: Data Extraction: The system shall parse user-provided data (spoken or visual) for loan-relevant
+details: income, loan purpose, employment, etc. (Use NLP/LLM to extract structured data). 
+FR6: Auto-Fill: The system shall auto-populate the loan application form with extracted data and
+allow user confirmation. 
+FR7: Risk Evaluation: The system shall retrieve external data (credit bureau scores, policy rules) and
+compute an aggregate risk/propensity score for the user . 
+FR8: LLM Insight: The system shall use an LLM (e.g. GPT) to interpret customer’s verbal responses
+and classify them (e.g. risk band, confidence). 
+FR9: Offer Generation: Based on policies, risk score, and user data, the system shall generate
+personalized loan offers (amount, tenure, EMI) and present them to the user . 
+Use Case – “Jane applies for a loan”: Jane visits the platform, starts a video call, consents verbally, and
+answers questions. The system captures her ID (FR2), verifies age (FR3), extracts that she earns \$X (FR5),
+computes her risk (FR7), and instantly offers a \$Y loan (FR9). 
+2.2 External Interface Requirements
+UI Interface (Human): The frontend (web or mobile) shall provide a video-call UI (integration via
+WebRTC/Twilio). It shall display forms (auto-filled), consent dialogs, and final offers. The UI must be
+accessible and responsive. 
+API Interface (System): The back-end shall expose RESTful APIs (or GraphQL) for all front-end
+interactions: user session management, data submission, retrieving results. 
+Hardware Interfaces: Use of standard camera/microphone on user device. Back-end servers will
+interface with GPUs (for ML inference) and with data storage (DB, S3). 
+Third-party Integration: The system shall interface with: 
+Identity Verification API (for KYC), 
+Speech-to-Text engine (e.g. Whisper or cloud STT) for audio transcription, 
+LLM service (OpenAI/GPT or local model) via API, 
+Credit Bureau API for credit score and history. 
+2.3 Non-Functional Requirements (Quality Attributes)
+Performance: The system shall process video and audio in real-time (e.g. end-to-end onboarding < 5
+minutes). API responses (e.g. offer generation) should return in <1 second. Throughput must handle
+hundreds of concurrent users (scale horizontally). 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+3
+Scalability: Use microservices and load balancing to support growth. The architecture should allow
+adding more instances (e.g. via Kubernetes or serverless autoscaling). 
+Security & Compliance: All PII data must be encrypted at rest and in transit (TLS). The system shall
+follow OWASP best practices (e.g. parameter validation, CORS policies). It must generate an audit
+trail for all steps (consents, decisions) for compliance. Access controls (RBAC) limit who can view logs
+or override decisions. 
+Privacy: Only necessary data is stored, with user consent. Retention policies must comply with
+regulations (e.g. delete raw videos after processing if not needed). 
+Reliability & Availability: System uptime target 99.9%. Redundancy for critical components (API
+servers, DB replicas) is required. Failover procedures if ML service fails (e.g. manual review fallback). 
+Maintainability: Code should follow modular design (clean architecture), with CI pipelines enforcing
+linting and tests. Configurations (ML thresholds, policy rules) should be externalized for easy
+updates. 
+Usability: User interface should be intuitive (minimal form fields, guided prompts). Documentation
+should be provided (in-app help, API docs via Swagger/OpenAPI). 
+2.4 Data Requirements
+Data Sources: 
+User Input: Live video (stream), audio (call audio), user-entered fields (name, income). 
+Images: Scanned ID documents, profile photo. 
+External: Credit bureau records, historical loan data, policy configurations (tables/rules). 
+Data Formats: 
+Video: H.264/H.265 stream or recorded MP4. 
+Audio: WAV/FLAC or real-time Opus. 
+Transcripts: JSON with timestamps from STT service. 
+Structured Data: JSON/SQL tables (user profile, application details, loan offers, logs). 
+Data Storage & Retention: 
+Databases: Sensitive user data encrypted in a secure RDBMS or NoSQL store. 
+Logs: Decision logs and consent transcripts stored in an append-only log for audit (retain 5+ years
+for compliance). 
+Media: Raw videos/images may be ephemeral; store derived features (face embeddings, transcripts).
+Policies/Config: Version-controlled (Git or DB) for reproducibility. 
+2.5 Constraints
+Regulatory: Must comply with financial regulations (e.g. KYC/AML, data privacy laws). 
+Technical: Limited by accuracy of CV and LLM technologies; must use explainable methods for
+decisions (to avoid black-box issues). 
+Performance: Real-time requirement constrains model size/latency; may need GPU or optimized
+models. 
+Budget: Third-party API costs (STT/LLM) and cloud resources must be justified. 
+2.6 Assumptions
+Users will speak a supported language. 
+Network is stable enough for real-time video. 
+• 
+11
+• 
+7
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+4
+Credit bureau and KYC services have acceptable response times. 
+LLM outputs will be validated by deterministic rules (deterministic override of any LLM output). 
+2.7 Acceptance Criteria
+Each functional requirement must be testable and verifiable. For example: 
+FR2 (KYC): Given a test video of a registered user , the system correctly matches the face with >99%
+accuracy (or flags if mismatch). 
+FR4 (Consent): System records user’s spoken “I consent” and logs timestamp and transcript. 
+Offer Quality: Generated loan offers must conform to policy (e.g. never exceed eligibility limits) and
+pass a set of pre-approval tests. 
+Performance: 95% of API calls return in <500ms under normal load. 
+Security: Static code analysis finds no critical vulnerabilities; penetration testing reveals no high-
+severity flaws. 
+2.8 Traceability Matrix
+A Requirements Traceability Matrix (RTM) will map each requirement to design modules, test cases, and user
+stories . For example:
+Requirement
+ID Description Design Module Test Cases
+FR1 Real-time video call
+(web interface)
+frontend/video.html, 
+Backend/VideoService
+TC1: Start video call,
+TC2: End call
+FR2 Face recognition
+(KYC) CVModule TC3: Valid ID match, TC4:
+Invalid ID mismatch
+FR7 Risk score
+computation RiskEngine TC5: Low risk user , TC6:
+High risk user
+… … … …
+This bidirectional RTM ensures every requirement is tested and traceable.
+2.9 Risk Analysis & Mitigation
+Key risks include: 
+Data Quality Risk: Poor video/audio quality may degrade model outputs. Mitigation: Implement
+input checks (e.g. ensure face visibility), allow manual override; prompt user to retry. 
+Model Inaccuracy: ML models may yield false positives/negatives (e.g. mis-identifying age or risk). 
+Mitigation: Use ensemble of models, include rule-based fallbacks, threshold tuning and regular re-
+training with new data. 
+Security Breach: Personal data leakage. Mitigation: Encrypt all PII, use secure key management,
+perform code reviews and pen tests. 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+12
+12
+• 
+• 
+• 
+5
+Integration Failure: Third-party API downtime (e.g. bureau service). Mitigation: Implement circuit
+breakers and caching (e.g. store last known score), provide user-friendly error if needed. 
+Scalability Limits: Sudden load spike may overload system. Mitigation: Auto-scale in cloud (using
+Kubernetes/HPA), use asynchronous queues for non-real-time tasks. 
+LLM Hallucination: The LLM may produce incorrect inferences. Mitigation: Constrain LLM with
+context, validate its output with deterministic business rules. 
+3. Architecture and Data Flow
+The high-level architecture is modular (illustrated below). We adopt a microservices approach: 
+graph LR
+  subgraph UserSide
+    U[User<br>(Browser/Mobile)]
+  end
+  subgraph Frontend
+    FE(Next.js Frontend)
+    U -->|video/audio stream| FE
+  end
+  subgraph VideoService
+    VC(Video Call Service)
+    FE -->|WebRTC connect| VC
+    VC -->|streams| BE
+  end
+  subgraph Backend
+    BE(API Server<br>(FastAPI))
+    CV(CV + KYC Service)
+    ASR(Speech-to-Text Service)
+    AGE(Age Estimation Service)
+    LLM(LLM Text Analysis)
+    RISK(Risk Engine)
+    OFFER(Offer Generator)
+    DB[(Database)]
+    Cache[(Redis Cache)]
+  end
+  subgraph External
+    BR(Credit Bureau API)
+    PL(Policy DB/API)
+  end
+  %% Flows
+  VC --> BE: stream
+  BE --> CV: video frames
+  BE --> ASR: audio
+  ASR --> LLM: transcript
+  CV --> DB: identity data
+  ASR --> DB: transcripts
+• 
+• 
+• 
+6
+  CV --> AGE: faces
+  LLM --> RISK: insights
+  RISK --> OFFER: risk score
+  OFFER --> BE: loan offers
+  BE --> DB: store offers & logs
+  BE --> BR: credit data
+  BR --> RISK: bureau data
+  BE --> PL: policy data
+  PL --> RISK: policy rules
+  BE --> Cache: temp data
+  Cache --> BE: cached data
+The User interacts via a web front-end (Next.js/React). 
+Video Call is managed by a service (e.g. WebRTC server or Twilio); streams go into the backend. 
+The Backend (FastAPI) handles all logic: splitting video frames to the CV module (face recognition,
+ID check) and Age Estimation, sending audio to STT (e.g. Whisper or Google STT) whose text goes
+into an LLM. All results feed the Risk Engine and Offer Generator. 
+A central Database stores user profiles, transcripts, logs, and offers; a Cache (Redis) holds session
+data and speedup. 
+External APIs (Credit Bureau, internal Policy DB) provide data into the risk calculation. 
+Data Flow (Sequence)
+Start Session: User logs in/initiates call – backend creates session token. 
+Video/Audio Capture: User connects camera/mic. The frontend streams data to the Video Service
+which relays to backend. 
+KYC Checks: Backend captures video frames → CV module. It compares user’s face to ID database
+(FR2) and logs result. Simultaneously, extracts document data (e.g. from an ID photo). 
+Consent & Info Capture: The system prompts (via synthesized voice or on-screen) for consent and
+key info. User speaks answers; audio sent to ASR module. 
+Speech-to-Text & NLP: Audio → STT (fast, low latency) to get transcript. Transcript → LLM (fine-
+tuned for this domain) to extract structured info (income, purpose, sentiment). LLM is
+constrained by context to prevent hallucination. 
+Risk Calculation: Backend calls Credit Bureau API (if allowed) for credit score, fetches policy rules.
+The risk engine uses bureau data, LLM outputs (e.g. confidence level), and CV age-check to compute
+a risk score. 
+Offer Generation: Based on risk and policy, the system formulates loan terms. Results (approved
+amount, rates) are stored in DB and sent to frontend. 
+End Session: Backend logs consent and decision. User receives offers, may accept or request
+changes. Final decision stored as audit record. 
+The architecture and flow ensure modularity and reuse: e.g. CV, ASR, LLM can be independent microservices
+(perhaps Docker containers). This decoupling aids testing and scaling.
+• 13
+• 
+• 
+• 
+• 
+1. 
+2. 
+3. 
+4. 
+5. 
+4
+6. 
+7. 
+8. 
+13 5
+7
+4. Technology Stack Recommendations
+We choose technologies that are production-proven, scalable, and well-supported: 
+Frontend: Next.js (React) – modern framework for web apps. It supports server-side rendering
+(SEO, faster first load) and integrates well with React components. It’s ideal for building responsive
+video-call UIs. 
+Backend: Python (FastAPI) – high-performance async framework. FastAPI can handle ~15k+ req/s
+vs Flask’s ~2-3k, important for real-time throughput. It provides built-in data validation (via
+Pydantic) and auto-generates OpenAPI docs, reducing boilerplate and errors. Developers can
+leverage Python’s rich ML ecosystem. 
+Machine Learning: 
+Deep Learning Frameworks: PyTorch (or TensorFlow) for model development. PyTorch has strong
+community support and dynamic graph for ease of experimentation. 
+Computer Vision: OpenCV, dlib, or specialized libraries (e.g. FaceNet) for face recognition/age
+estimation. Pre-trained models (e.g. OpenCV’s DNN modules) can accelerate dev. 
+Speech-to-Text: Consider OpenAI Whisper (open-source), Google Cloud STT, or AWS Transcribe for
+high-accuracy transcription (often using cloud APIs for better performance on noisy audio). 
+LLM Integration: Use a high-quality language model via API (e.g. GPT-4 or Claude) or an open
+checkpoint (via Hugging Face). The LLM will be used in a controlled way to parse spoken answers. 
+Database: PostgreSQL (relational) for user/account data, because of ACID compliance for financial
+data. Or a document DB (e.g. MongoDB) if flexibility needed for diverse unstructured logs. Redis for
+caching sessions and intermediate results. 
+APIs and Services: 
+Video Call: Twilio Video or Jitsi for scalable video sessions (offloading WebRTC complexities). 
+Identity Verification: If possible, tie into existing KYC providers (e.g. Jumio, Onfido). Otherwise use
+CV models to match ID photos. 
+Credit Bureau: Integration via REST API to Experian/TransUnion/Equifax. 
+Deployment/Cloud: AWS or GCP. For example, AWS with Elastic Beanstalk or EKS for services, S3 for
+storage, RDS for PostgreSQL, and Lambda/ECS for microservices. 
+Authentication/Authorization: JWT tokens for API security, OAuth2 for user login (if applicable).
+Use industry-standard libraries. 
+Rationale: FastAPI’s async nature and auto-docs markedly improve development speed and performance
+. Python/PyTorch are industry-standard for ML. Next.js offers a robust, SEO-friendly UI. A combination of
+relational (for structured data) and NoSQL (for logs/media) plus caching covers all data needs. Cloud-
+managed services ensure scalability. 
+• 
+• 
+1
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 13
+• 
+• 
+• 
+• 
+1
+8
+5. Project Structure, CI/CD, Testing, Deployment &
+Monitoring
+Project Structure: We recommend a monorepo with clear folders: 
+project/
+├── frontend/           # Next.js app  
+│   ├── pages/          # UI pages (React)  
+│   ├── components/     # Reusable React components  
+│   └── ...  
+├── backend/            # FastAPI app  
+│   ├── app.py         # main application  
+│   ├── routes/        # API endpoint modules  
+│   ├── models/        # DB and ML model definitions  
+│   ├── services/      # Business logic (CV, ASR, Risk)  
+│   ├── utils/         # Helpers, config  
+│   └── requirements.txt  
+├── ml/                 # ML training code (not part of API service)  
+│   ├── preprocess.py  
+│   ├── train.py  
+│   ├── models/        # serialized models  
+│   └── metrics.py  
+├── tests/              # Automated tests (unit, integration)  
+├── docs/              # Design docs, SRS, API spec  
+├── ci/                # CI/CD pipeline configs (e.g. GitHub Actions)  
+├── Dockerfile         # For containerizing backend  
+├── docker-compose.yml # For local dev (optional)  
+├── .github/           # CI/CD (GitHub Actions workflows)  
+├── .gitignore  
+└── README.md  
+This separates concerns (UI vs backend vs ML), keeps tests outside application code (Python guide
+recommends separate tests folder), and has a root README and CI configs. 
+CI/CD Pipeline: Use a managed CI like GitHub Actions, GitLab CI, or Jenkins. Best practices include: 
+Source Control: Single repo with branches (GitFlow or trunk-based). Commit frequently and
+trigger CI on each push. 
+Stages: (1) Build – install dependencies (e.g. pip install -r requirements.txt, npm ci),
+compile (TypeScript/Babel), and containerize (Docker build). (2) Test – run automated tests (unit
+tests with PyTest/Jest, integration tests). Also run linting and static analysis (e.g. Bandit for Python,
+ESLint for JS). (3) Deploy – on a merge to main, automatically deploy to staging or production
+environments, run smoke tests, and if OK, approve promotion. We automate deployment (no
+14
+• 3
+• 
+15
+9
+manual steps). Use Terraform or CloudFormation for infra as code. Keep environments isolated
+(dev, QA, prod). 
+Testing Plan:
+Unit Tests: Test individual functions (data validation, DB models) for correctness (ML code unit-tests
+include verifying data pipelines and model outputs). These should run on every commit. 
+Integration Tests: Test interactions between modules (e.g. complete API flow from HTTP request
+through database write). Use test databases or mocks. 
+End-to-End Tests: Simulate user flow (e.g. via Puppeteer or Cypress, or API tests) to ensure all
+components work. 
+ML-Specific Tests: Validate data schemas, check model accuracy on hold-out data, and integration
+tests for inference (weigh outputs). Plan for monitoring data/model drift in production. 
+Deployment: Containerize services (Docker), use orchestration (Kubernetes/ECS) for scaling. CI
+should tag Docker images and deploy. Rollbacks enabled. 
+Monitoring: Log all API calls (to ELK/CloudWatch). Monitor application metrics (response times,
+error rates) and infrastructure (CPU/GPU, memory). For ML, monitor model performance (e.g.
+accuracy over new data) and data drift. Use tools like Prometheus/Grafana or cloud-native (AWS
+CloudWatch, GCP Stackdriver). Alerts on SLA breaches or security events. 
+6. API Specification
+Below is a summary of key API endpoints (REST) with auth via JWT: 
+Endpoint Method Request (JSON) Response (JSON) Description Auth
+POST /api/login POST { "username":..., 
+"password":... }
+{ "token": "jwt-
+token" }
+Authenticate
+user/agent,
+return JWT
+token.
+No
+POST /api/users POST { "name":..., 
+"email":..., ... } { "user_id": ... }
+Register new
+user
+account.
+No
+GET /api/users/meGET (none) {user profile} Get logged-
+in user info. JWT
+POST /api/session/
+start POST { "user_id":..., 
+"session_type":"loan"}{ "session_id":... }
+Begin
+onboarding
+session,
+returns
+session ID.
+JWT
+POST /api/video/
+upload POST FormData: session_id, 
+video_chunk {status: "ok"}
+(If not real-
+time) Upload
+recorded
+video.
+JWT
+16
+• 
+• 
+4
+• 
+• 
+• 
+• 
+• 
+10
+Endpoint Method Request (JSON) Response (JSON) Description Auth
+POST /api/
+transcribe POST { "session_id":..., 
+"audio": <binary> }
+{ "transcript": 
+"...", 
+"confidence":... }
+Submit audio
+for
+transcription.
+JWT
+GET /api/kyc/
+verify POST { "session_id":..., 
+"image": <binary> }
+{ "match": true/
+false, 
+"confidence":... }
+Verify ID
+photo. JWT
+POST /api/offer/
+evaluate POST { "session_id":... }
+{ "offers": [...], 
+"eligibility": true/
+false }
+Compute
+loan offers. JWT
+GET /api/loan/
+offers/:session_idGET - { "offers": [...] }
+Retrieve
+generated
+offers.
+JWT
+(Schemas are simplified – in practice use JSON Schema or OpenAPI definitions.)
+Each request must include an Authorization: Bearer <token> header (except login). Responses
+include HTTP codes: 200 OK, 400 Bad Request, 401 Unauthorized, etc. All data inputs are validated (e.g.
+using Pydantic models). The API docs (Swagger UI) are auto-generated from code. 
+7. ML Pipeline
+The ML pipeline has two main flows: training/offline and inference/online. 
+Data Preprocessing: Gather labeled data for training (e.g. customer videos with annotated
+transcripts and known outcomes). Preprocess steps include video frame sampling, image
+normalization, audio denoising, text cleaning. For tabular data (credit records), normalize and
+encode. Tools: Python scripts (Pandas, OpenCV, librosa). Automate with Airflow or Prefect. 
+Model Selection:
+Face Recognition & Age Estimation: Use pre-trained CNNs (e.g. FaceNet for identity, DeepFace or
+SSR-Net for age) and fine-tune on relevant demographic data. 
+Speech-to-Text: Leverage a state-of-the-art ASR model (e.g. Whisper) for robust transcription. 
+Intent/Info Extraction (LLM): Fine-tune or prompt an LLM (e.g. GPT) to parse audio transcripts into
+structured info. This may use few-shot or domain adaptation. 
+Risk Model: A classification/regression model (e.g. XGBoost, or NN) trained on historical loan data to
+predict default probability. Input features: bureau scores, declared income, conversation features
+(confidence signals from LLM), etc. 
+17
+• 
+• 
+• 
+• 
+• 
+• 
+11
+Training: Use train/validation/test splits. Employ k-fold or cross-validation to ensure generalization.
+For small labeled data, consider data augmentation (simulate audio noise, faces). Use GPU/TPU
+resources (e.g. AWS SageMaker). Log experiments with MLflow for tracking. 
+Evaluation Metrics: Depends on task: 
+CV tasks (face match): Accuracy, False Acceptance Rate/False Rejection Rate. 
+Age estimation: Mean Absolute Error (years). 
+STT: Word Error Rate (WER). 
+LLM extraction: F1-score on extracted fields. 
+Risk model: AUC-ROC, precision/recall, confusion matrix. 
+Overall system: Offer acceptance rate, decision latency. We must also monitor bias/fairness metrics
+(e.g. error rates across demographics). 
+Model Serving: Deploy models as REST or gRPC services. For real-time inference, use lightweight
+frameworks (e.g. TorchServe or FastAPI endpoints). Containerize each ML service. Ensure versioning:
+each deployed model version is tagged (e.g. via MLflow or a model registry) and audit-tracked. Allow
+rollback to previous model. 
+Monitoring (ML-Ops): Track inference performance (latency) and drift: compare new data
+distributions to training baselines. Set thresholds to trigger retraining. Maintain data provenance. A/
+B testing can be used when releasing new models. 
+In summary, the ML pipeline is orchestrated end-to-end (data to deployment) with validation at each step
+. 
+8. Deliverables, Milestones & Timeline
+We break the project into phases with deliverables:
+Milestone Deliverables Duration Effort
+Estimate
+Phase 1 – Planning SRS document (this report), architecture
+diagrams, project plan 1 week 1 PM
+Phase 2 – Environment
+Setup
+Code repo init, CI pipeline, basic frontend &
+backend scaffold 2 weeks 2 PM
+Phase 3 – Core ML
+Prototyping
+Prototype CV module, ASR integration, LLM
+prompts 3 weeks 2 Dev, 1 Data
+Sci
+Phase 4 – Backend
+Development
+API endpoints, DB schema, logic integration
+(call CV/STT) 4 weeks 2 Dev
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+18 5
+12
+Milestone Deliverables Duration Effort
+Estimate
+Phase 5 – Frontend
+Development
+Video-call UI, forms, frontend-backend
+integration 3 weeks 2 Dev
+Phase 6 – Risk & Offer
+Logic
+Implement risk engine, policy rules, offer
+generator 3 weeks 1 Dev, 1 PM
+Phase 7 – Integration &
+Testing
+System integration, automated tests,
+security audit 2 weeks 2 Dev, QA
+Phase 8 – Deployment &
+Rollout
+Production deployment, monitoring setup,
+documentation 1 week 1 Dev, Ops
+Total duration: ~4 months. (Effort estimate in person-months: ~10-12 PM total including overlapping roles.)
+Below is a simplified Gantt chart (mermaid) illustrating timelines:
+gantt
+    title Project Timeline
+    dateFormat  YYYY-MM-DD
+    axisFormat  %b '%d
+    section Planning
+    SRS & Design        :done,  des1, 2026-04-18, 7d
+    section Setup
+    Repo & CI/CD        :active, des2, 2026-04-25, 14d
+    section ML Prototyping
+    CV/ASR/LLM prototypes: des3, 2026-05-09, 21d
+    section Backend
+    API & DB dev        : des4, after des3, 28d
+    section Frontend
+    UI & Video dev      : des5, after des4, 21d
+    section Risk/Offers
+    Risk engine & offers: des6, after des5, 21d
+    section Testing
+    Integration & QA    : des7, after des6, 14d
+    section Deployment
+    Prod rollout        : des8, after des7, 7d
+(Dates are illustrative; actual start/end depend on project kickoff.)
+9. Design Alternatives & Trade-offs
+We compare some key design choices:
+13
+Component Option A Option B Trade-offs
+Web
+Framework
+FastAPI (Python) –
+Async, high
+throughput,
+auto-docs, fits ML.
+Flask (Python) –
+Simpler for sync
+code, mature.
+FastAPI yields ~5–10× more requests/
+sec . Flask has more third-party
+plugins, but FastAPI’s modern features
+(async, pydantic) simplify
+development. We choose FastAPI for
+scalability.
+Frontend
+Framework
+Next.js (React) –
+SEO-friendly, rich
+ecosystem.
+Vue.js/Nuxt.js –
+Similar benefits,
+smaller market
+share.
+Next.js has huge community and easy
+React integration; alternatives exist
+but React skills are more common.
+Database
+PostgreSQL – ACID,
+strong relational
+support.
+MongoDB – Flexible
+schema for varied
+data.
+For financial data, strong consistency
+(Postgres) is preferred. MongoDB
+could speed JSON logging, but we can
+use it for unstructured logs if needed.
+ML Model
+Hosting
+Managed Endpoint
+(e.g. AWS
+SageMaker
+Endpoints)
+Self-hosted (Docker
+on Kubernetes)
+Managed removes ops burden (auto-
+scaling, logging) but can be costlier .
+Self-hosted gives full control. We may
+start managed for speed, then move
+to Kubernetes if scale demands.
+Cloud
+Provider
+AWS – Mature ML/
+compute services
+(Sagemaker ,
+Lambda, RDS).
+GCP/Azure –
+Comparable
+features (Cloud ML,
+Functions, SQL).
+AWS has broader market use and
+many references, but GCP’s pricing
+or specific AI tools (TPUs) could sway
+choice. The main trade-off is
+organizational preference.
+CI/CD Tool
+GitHub Actions –
+Integrated with
+GitHub, easy YAML.
+Jenkins/CircleCI –
+More mature/
+customizable.
+GitHub Actions suffices for most
+pipelines ; Jenkins is powerful but
+heavier .
+Each choice balances speed of development, performance, and maintainability. The above table
+summarizes rationale and cites benchmarks (e.g. FastAPI performance). 
+10. Antigravity Prompt: Automated Project
+Scaffold
+Below is a script-style “Antigravity” prompt that bootstraps the project. It assumes a Unix-like environment
+with Git, Node.js, and Python installed.
+# 1. Create project directory
+mkdirloan-onboarding&&cdloan-onboarding
+gitinit
+1
+1
+13
+6
+1
+14
+# 2. Frontend setup (Next.js React)
+npxcreate-next-app@latestfrontend--typescript--eslint
+cdfrontend
+npminstalltwilio-videoreact-reduxredux-thunkaxios
+cd..
+# 3. Backend setup (FastAPI)
+python3-mvenvvenv&&sourcevenv/bin/activate
+pipinstallfastapiuvicornsqlalchemypydanticboto3transformerstorch
+pipinstallpsycopg2-binaryorjsonredisaioredis"uvicorn[standard]"
+# Create basic FastAPI app structure
+mkdirbackend&&cdbackend
+cat<< 'EOF' > app.py
+from fastapi import FastAPI
+app = FastAPI(title="LoanOnboardingAPI")
+@app.get("/")
+async def root():
+    return {"message": "API is up"}
+EOF
+mkdirroutesservicesmodelsutils
+touchrequirements.txtmain.py
+echo"fastapi">>requirements.txt
+cd..
+# 4. ML pipeline directory
+mkdirml&&cdml
+touchpreprocess.pytrain.pymodels.py
+pipinstallscikit-learnpandasnumpy
+cd..
+# 5. Common files
+touch.gitignoreREADME.md.env.example
+cat<< 'EOF' > .gitignore
+venv/
+__pycache__/
+node_modules/
+.env
+EOF
+# 6. CI/CD (GitHub Actions)
+mkdir-p.github/workflows
+cat<< 'EOF' > .github/workflows/ci.yml
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with: python-version: '3.10'
+15
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+      - name: Run backend tests
+        run: pytest backend/tests
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with: node-version: '16'
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test
+EOF
+# 7. Initialize repo, make first commit
+gitadd.
+gitcommit-m"Initial project scaffold: frontend and backend"
+# 8. Instructions
+echo"Setup complete. To run locally:"
+echo" - Frontend: cd frontend && npm run dev"
+echo" - Backend: source venv/bin/activate && uvicorn backend.app:app --reload"
+Instructions: Save this script to init_project.sh, make it executable (chmod +x 
+init_project.sh), and run it. It will create the repository layout, install core dependencies, and set up CI
+config. Adjust the script for specific package versions or add additional setup steps as needed. After
+running, open README.md to document further steps and environment variables. 
+Sources
+Software Requirements Specification guidelines and templates. 
+Continuous Integration/Deployment best practices. 
+Machine Learning pipeline design and testing importance. 
+FastAPI vs Flask performance benchmarks. 
+Example AI/ML architecture patterns. 
+Requirements traceability and SRS roles. 
+FastAPI vs Flask 2025: Performance, Speed & When to Choose
+https://strapi.io/blog/fastapi-vs-flask-python-framework-comparison
+ML Pipelines: 5 Components and 5 Critical Best Practices | Dagster
+https://dagster .io/learn/ml
+• 7 19
+• 20 6
+• 21 5
+• 1
+• 13
+• 12 8
+1 17
+2 5 11 18
+16
+CI/CD Process: Flow, Stages, and Critical Best Practices
+https://codefresh.io/learn/ci-cd-pipelines/ci-cd-process-flow-stages-and-critical-best-practices/
+Testing ML Models: From Unit Tests to End-to-End Testing - MLops, Data Science
+https://enhancedmlops.com/testing-ml-models-from-unit-tests-to-end-to-end-testing/
+SRS: Software Requirement Specifications Basics – BMC Software | Blogs
+https://www.bmc.com/blogs/software-requirements-specification-how-to-write-srs-with-examples/
+How to Write a Software Requirements Specification (SRS) Document | Perforce Software
+https://www.perforce.com/blog/alm/how-write-software-requirements-specification-srs-document
+2024 Guide to Software Requirements Specification (SRS)
+https://relevant.software/blog/software-requirements-specification-srs-document/
+Requirements Traceability Matrix - RTM - GeeksforGeeks
+https://www.geeksforgeeks.org/software-testing/requirement-traceability-matrix/
+Production-Ready Tech Stack for AI/ML, data, cloud, DevOps & more! (in 2020) | by Jose M | Medium
+https://medium.com/@matrixdev/production-ready-tech-stack-for-ai-ml-data-cloud-devops-more-cabe962e2062
+Structuring Your Project — The Hitchhiker's Guide to Python
+https://docs.python-guide.org/writing/structure/
+3 6 15 16 20
+4 21
+7 10
+8
+9 19
+12
+13
+14
+17

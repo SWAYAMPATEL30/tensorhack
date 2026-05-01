@@ -1,0 +1,673 @@
+
+
+
+SOFTWARE REQUIREMENTS SPECIFICATION
+Agentic AI Video Call–Based Onboarding System
+
+Poonawalla Fincorp – Loan Wizard
+Video-Based Digital Loan Origination &amp; Risk Assessment System
+
+
+Document Title
+SRS – Agentic AI Video Call–Based Loan Onboarding
+Version
+1.0
+Status
+Draft
+Prepared For
+Poonawalla Fincorp
+Date
+17 April 2026
+Classification
+Confidential
+
+
+
+CONFIDENTIAL – FOR INTERNAL USE ONLY
+
+
+1. Introduction
+1.1 Purpose
+This Software Requirements Specification (SRS) document defines the complete functional, non-functional, system, and compliance requirements for the Agentic AI Video Call–Based Onboarding System developed for Poonawalla Fincorp’s Loan Wizard platform. It serves as the authoritative reference for developers, architects, QA engineers, product managers, compliance officers, and all other stakeholders involved in the design, development, and deployment of the system.
+
+1.2 Scope
+The system, referred to as the Loan Wizard Onboarding Platform (LWOP), enables end-to-end digital loan origination through a live video call interface. The platform integrates Speech-to-Text (STT), Computer Vision, Large Language Models (LLM), bureau data, policy engines, and risk scoring to fully automate loan eligibility verification and personalized offer generation without requiring physical presence or paper documents.
+
+The scope encompasses:
+Customer entry via digital campaign links
+Live video call–based data capture and identity validation
+Speech-to-Text consent and information extraction
+Facial analysis and age estimation via Computer Vision
+Auto-fill of loan application from extracted data
+Risk assessment using internal bureau data, ML models, and policy rules
+LLM-based conversational intelligence and customer classification
+Personalized loan offer generation
+Central audit logging, compliance storage, and reporting
+
+1.3 Definitions, Acronyms, and Abbreviations
+Term / Acronym
+Definition
+LWOP
+Loan Wizard Onboarding Platform – the system described in this SRS
+STT
+Speech-to-Text – AI service that converts spoken language to written text
+LLM
+Large Language Model – AI model used for natural language understanding and classification
+KYC
+Know Your Customer – regulatory identity verification process
+ML
+Machine Learning – statistical models used for risk and propensity scoring
+EMI
+Equated Monthly Installment – fixed monthly loan repayment amount
+API
+Application Programming Interface
+RBI
+Reserve Bank of India – primary financial regulator
+PII
+Personally Identifiable Information
+CV
+Computer Vision – AI module for visual analysis
+TLS
+Transport Layer Security – encryption protocol for data in transit
+AES
+Advanced Encryption Standard – used for data at rest encryption
+DPDPA
+Digital Personal Data Protection Act, 2023 (India)
+
+1.4 References
+RBI Master Direction on KYC, 2016 (as amended)
+DPDPA – Digital Personal Data Protection Act, 2023
+IEEE Std 830-1998 – Recommended Practice for Software Requirements Specifications
+Poonawalla Fincorp Internal Loan Policy Manual v3.2
+OWASP API Security Top 10
+ISO/IEC 27001:2022 Information Security Management
+
+1.5 Overview
+The remainder of this document is organized as follows: Section 2 provides an overall system description; Section 3 defines all functional requirements; Section 4 covers external interface requirements; Section 5 details non-functional requirements; Section 6 specifies system and data requirements; Section 7 addresses compliance and regulatory requirements; Section 8 describes the system architecture; Section 9 covers testing requirements; and Section 10 includes appendices.
+
+2. Overall Description
+2.1 Product Perspective
+The LWOP is a standalone digital platform that integrates with Poonawalla Fincorp’s existing CRM, bureau data systems, and core banking infrastructure. It replaces the manual, branch-based or call-center-assisted loan onboarding process with a fully automated, AI-driven video call experience. The system operates as a real-time SaaS platform deployed on cloud infrastructure.
+
+2.2 Product Functions – High-Level Summary
+#
+Function
+Description
+F1
+Campaign Link Entry
+Secure tokenized link delivery via SMS/WhatsApp/Email
+F2
+Video Call Session
+Real-time WebRTC video session initiation and management
+F3
+STT Processing
+Live audio transcription and NLP-based data extraction
+F4
+Consent Capture
+Verbal and digital consent recording with audit trail
+F5
+Age Estimation (CV)
+Facial analysis to estimate and validate customer age
+F6
+Geo-Location Capture
+GPS/IP-based location verification for fraud checks
+F7
+Auto-Fill Engine
+Populate application form from extracted conversational data
+F8
+Risk &amp; Policy Engine
+Evaluate bureau data, ML scores, and policy eligibility rules
+F9
+LLM Intelligence Layer
+Contextual understanding, classification, and structured output
+F10
+Offer Generation
+Personalized loan offer creation with EMI and tenure options
+F11
+Audit Repository
+Tamper-proof storage of video, transcripts, decisions, and logs
+
+2.3 User Classes and Characteristics
+2.3.1 Loan Applicant (Primary End User)
+Accesses the system via a mobile browser or app link
+May have varying levels of digital literacy
+Interacts primarily through voice during the video call
+Expects a smooth, low-friction onboarding experience
+
+2.3.2 Loan Officer / Supervisor (Internal User)
+Reviews flagged or escalated applications
+Accesses audit logs and session recordings
+Can override AI decisions within policy bounds
+
+2.3.3 Compliance Officer
+Reviews consent records and audit trails
+Generates regulatory reports
+Monitors KYC compliance across all sessions
+
+2.3.4 System Administrator
+Manages user access, policy configurations, and system health
+Monitors real-time dashboards and alerting
+
+2.4 Operating Environment
+Cloud-native deployment (AWS / Azure / GCP – multi-region)
+Container-based microservices architecture (Docker / Kubernetes)
+Customer-facing: Mobile browsers (iOS Safari, Android Chrome), minimum 4G network
+Internal dashboards: Desktop browsers (Chrome, Edge, Firefox – latest 2 versions)
+Supported OS: iOS 14+, Android 10+, Windows 10+, macOS 12+
+
+2.5 Design and Implementation Constraints
+All data must remain within Indian jurisdiction (data residency requirement)
+Video processing must adhere to RBI video KYC guidelines
+System must be stateless at the application tier for horizontal scalability
+No PII may be logged in application logs; must use tokenized references
+LLM outputs are advisory; all final decisions must be deterministic rule-based
+Video recordings must be encrypted at rest using AES-256
+
+2.6 Assumptions and Dependencies
+Customer has a functioning front-facing camera and microphone
+Customer is in an area with stable internet connectivity (minimum 2 Mbps)
+Bureau data is available via real-time API integration
+LLM service is available via API (e.g., Azure OpenAI / Google Vertex AI)
+STT service supports Indian English and major regional languages
+Policy rules are maintained and version-controlled by the business team
+
+3. Functional Requirements
+3.1 Customer Entry via Campaign Link
+FR-1.1: Link Generation and Delivery
+The system SHALL generate unique, tokenized, single-use URLs for each campaign target.
+Links SHALL be deliverable via SMS, WhatsApp, email, and in-app notifications.
+Each link SHALL carry a JWT token embedding: customer mobile number, campaign ID, expiry timestamp, and channel source.
+Links SHALL expire after 72 hours or upon first session initiation, whichever is earlier.
+The system SHALL validate the token on every access attempt and return a 401 error for expired or tampered tokens.
+
+FR-1.2: Session Initialization
+Upon link access, the system SHALL collect device capability information (camera, microphone availability).
+The system SHALL prompt the user to grant camera and microphone permissions before initiating the session.
+The system SHALL display a pre-session checklist: ID document readiness, lighting conditions, quiet environment.
+Session initialization SHALL complete within 5 seconds on a 4G connection.
+
+3.2 Video Call Management
+FR-2.1: Real-Time Video Session
+The system SHALL establish a WebRTC-based peer-to-peer (or SFU-routed) video call session.
+Video SHALL be captured at minimum 720p resolution at 25 fps.
+Audio SHALL be captured at minimum 16 kHz sampling rate, mono channel.
+The system SHALL support session durations of up to 30 minutes.
+The system SHALL display a real-time video quality indicator to the customer.
+If connectivity drops below acceptable thresholds, the system SHALL attempt reconnection for up to 60 seconds before terminating the session.
+
+FR-2.2: Session Recording
+All video and audio streams SHALL be recorded in real time.
+Recordings SHALL be encrypted in transit (TLS 1.3) and at rest (AES-256).
+Recordings SHALL be tagged with: session ID, customer ID (tokenized), timestamp, and geo-location.
+The system SHALL generate a SHA-256 hash of each recording file upon completion for tamper detection.
+
+3.3 Speech-to-Text (STT) and Consent Capture
+FR-3.1: Real-Time Transcription
+The system SHALL stream audio to an STT service with latency under 2 seconds per utterance.
+The STT service SHALL support Indian English, Hindi, Marathi, and Tamil at minimum.
+Transcription confidence scores SHALL be captured and stored per segment.
+Low-confidence segments (below 80%) SHALL be flagged for human review.
+
+FR-3.2: Information Extraction from Transcript
+The system SHALL extract and structure the following fields from the transcript:
+Data Field
+Source
+Validation Rule
+Customer Full Name
+STT Transcript
+Match against ID proof
+Employment Type
+STT Transcript
+Must match: Salaried / Self-Employed / Business
+Monthly Income (Net)
+STT Transcript
+Numeric, &gt; INR 15,000
+Loan Purpose
+STT Transcript
+Categorized into 12 standard purpose codes
+Loan Amount Requested
+STT Transcript
+Numeric, within eligible policy range
+Explicit Verbal Consent
+STT Transcript
+Keyword detection: “I agree” / “I consent” / equivalents
+
+FR-3.3: Consent Audit Trail
+The system SHALL timestamp and store the exact phrase used to provide consent.
+Consent records SHALL be immutable post-capture.
+The system SHALL generate a consent receipt (PDF) sent to the customer’s registered email/WhatsApp.
+
+3.4 Computer Vision – Age Estimation
+FR-4.1: Facial Detection and Analysis
+The system SHALL detect a human face within the video frame within 3 seconds of session start.
+If no face is detected, the system SHALL prompt the customer to reposition and retry up to 3 times.
+Liveness detection SHALL be performed to prevent spoofing via photographs or screens.
+
+FR-4.2: Age Estimation
+The CV model SHALL estimate customer age with a target accuracy of ±3 years (Mean Absolute Error).
+If estimated age is below 18 years, the session SHALL be immediately terminated and flagged.
+If estimated age deviates from declared age by more than 10 years, the record SHALL be flagged for manual review.
+Age estimation confidence score SHALL be stored and used as a fraud signal.
+
+3.5 Geo-Location Capture and Validation
+FR-5.1: Location Capture
+The system SHALL request GPS location from the customer’s device upon session start.
+If GPS is unavailable, the system SHALL fall back to IP-based geo-location (accuracy ±10 km).
+Location SHALL be captured at start, middle (15 minutes), and end of session.
+
+FR-5.2: Fraud Signal Generation
+If customer location is outside India, the session SHALL be flagged and may be blocked per policy.
+If location changes by more than 50 km between captures, the system SHALL flag as a fraud signal.
+Location data SHALL be compared against the customer’s registered address for discrepancy scoring.
+
+3.6 Auto-Fill and Application Form Generation
+FR-6.1: Data Mapping
+All fields extracted via STT and CV SHALL automatically populate the digital loan application form.
+The auto-fill mapping SHALL cover a minimum of 85% of all required application fields.
+Remaining fields SHALL be prompted interactively during the video call.
+
+FR-6.2: Data Validation
+Each auto-filled field SHALL pass format and range validation before submission.
+Conflicting data (e.g., STT vs. CV vs. bureau mismatch) SHALL generate a discrepancy flag.
+Customer SHALL be given an opportunity to confirm auto-filled data before submission.
+
+3.7 Risk and Policy Evaluation Engine
+FR-7.1: Bureau Data Integration
+The system SHALL query internal credit bureau records using customer PAN or Aadhaar (masked) in real time.
+Bureau data retrieval SHALL complete within 3 seconds with a 99.5% SLA.
+The following bureau data SHALL be consumed: credit score, existing loan obligations, payment history (24 months), defaults and write-offs, inquiries in the last 6 months.
+
+FR-7.2: Policy Rule Evaluation
+The system SHALL evaluate a configurable rule engine against: minimum income thresholds, credit score bands, employment tenure, geographic eligibility, negative list (blacklist) check, loan amount limits by segment.
+Policy rules SHALL be version-controlled and support hot-reload without system restart.
+The policy engine SHALL return a pass/fail decision with a reason code within 1 second.
+
+FR-7.3: ML Risk Scoring
+The system SHALL invoke an ML propensity and risk scoring model with the following inputs: bureau score, income, employment type, loan purpose, age, location, session fraud signals.
+The model SHALL return: credit risk band (Low/Medium/High/Very High), default probability score (0–1), propensity-to-pay score, recommended loan amount range.
+
+3.8 LLM Intelligence Layer
+FR-8.1: Conversational Context Understanding
+The LLM SHALL process the complete STT transcript to understand intent, tone, and context.
+The LLM SHALL normalize unstructured responses (e.g., “about 50 thousand” → 50000).
+The LLM SHALL detect inconsistencies or evasive responses within the transcript.
+
+FR-8.2: Customer Classification
+The LLM SHALL output a structured JSON object containing: customer persona label, risk confidence indicator (0–1), key extracted entities, anomaly flags, and summary narrative.
+LLM outputs SHALL be strictly advisory and SHALL NOT override deterministic policy or bureau decisions.
+All LLM prompts and responses SHALL be logged for auditability.
+The system SHALL use prompt versioning; any prompt change SHALL require a deployment pipeline review.
+
+3.9 Loan Offer Generation
+FR-9.1: Offer Calculation
+The system SHALL generate up to 3 loan offer variants differing in: principal amount, interest rate, tenure, EMI.
+Offers SHALL be calculated using risk band, policy limits, and customer-declared preferences.
+Interest rates SHALL be fetched from the real-time rate card API with a maximum 5-second cache TTL.
+
+FR-9.2: Offer Presentation
+Offers SHALL be presented to the customer on-screen during or immediately after the video call.
+Each offer SHALL display: eligible loan amount, annual interest rate (APR), tenure options, monthly EMI, total repayment amount, processing fee.
+The customer SHALL be able to select and digitally accept an offer within the session.
+
+3.10 Central Audit Repository
+FR-10.1: Data Storage
+The following records SHALL be stored for every completed session: encrypted video recording, STT transcript, consent record, geo-location timestamps, CV age estimation result and score, extracted application data, bureau query and response, policy evaluation result and reason codes, ML scores, LLM input/output, generated loan offers, customer’s selected offer (if any).
+
+FR-10.2: Retention and Immutability
+All session records SHALL be retained for a minimum of 5 years per RBI guidelines.
+Audit records SHALL be immutable – no update or delete operations SHALL be permitted post-write.
+Records SHALL support legal hold tagging to extend retention beyond standard policy.
+
+FR-10.3: Access Control for Audit Data
+Only authorized roles (Compliance Officer, Auditor, System Administrator) SHALL have read access to raw session recordings.
+All access to audit records SHALL be logged with user ID, timestamp, and purpose.
+
+4. External Interface Requirements
+4.1 User Interfaces
+Customer-facing UI: Mobile-first responsive web application (PWA) supporting iOS and Android browsers.
+Pre-call screen: Device check, permissions, checklist.
+In-call screen: Video feed, live caption display, progress steps indicator.
+Post-call screen: Application confirmation, offer selection, consent receipt download.
+Internal dashboard: Loan officer review portal, compliance reporting, session playback (role-based).
+
+4.2 Hardware Interfaces
+Front-facing camera (minimum 5 MP recommended).
+Microphone with noise cancellation support.
+GPS module (device-level; falls back to IP geo if unavailable).
+Server hardware: Minimum 16-core CPU, 64 GB RAM per node for video processing workloads.
+
+4.3 Software Interfaces
+External System
+Interface Type
+Purpose
+STT Service (Google / AWS)
+REST API / WebSocket
+Real-time audio transcription
+LLM API (Azure OpenAI)
+REST API
+Conversational intelligence and classification
+Internal Credit Bureau
+REST API
+Credit score and loan history retrieval
+ML Scoring Service
+gRPC / REST API
+Risk and propensity scoring
+Rate Card Service
+REST API
+Real-time interest rate retrieval
+Notification Service
+REST API
+SMS / WhatsApp / Email delivery
+Object Storage (S3/Blob)
+SDK
+Video recording and document storage
+Core Banking System
+REST API
+Customer master data lookup
+Identity Verification (UIDAI)
+Government API
+Aadhaar-based identity check
+
+4.4 Communication Interfaces
+All external API calls SHALL use HTTPS with TLS 1.3 minimum.
+WebRTC video sessions SHALL use SRTP (Secure Real-time Transport Protocol).
+All API keys and service credentials SHALL be stored in a secrets manager (e.g., AWS Secrets Manager / Azure Key Vault).
+WebSocket connections SHALL be authenticated with short-lived bearer tokens.
+
+5. Non-Functional Requirements
+5.1 Performance Requirements
+Metric
+Target
+Maximum Acceptable
+Session Initialization Time
+&lt; 3 seconds
+5 seconds
+STT Latency (per utterance)
+&lt; 1.5 seconds
+2 seconds
+Age Estimation Processing Time
+&lt; 2 seconds
+3 seconds
+Bureau Data Retrieval
+&lt; 2 seconds
+3 seconds
+Policy Engine Evaluation
+&lt; 500 ms
+1 second
+LLM Classification
+&lt; 4 seconds
+6 seconds
+End-to-End Offer Generation
+&lt; 10 seconds
+15 seconds
+Concurrent Video Sessions
+1,000 sessions
+800 sessions minimum
+System Availability (SLA)
+99.9% uptime
+99.5%
+
+5.2 Security Requirements
+All PII SHALL be encrypted at rest (AES-256) and in transit (TLS 1.3).
+Authentication for internal users SHALL use MFA (Multi-Factor Authentication).
+The system SHALL implement OWASP API Security Top 10 mitigations.
+API rate limiting SHALL be enforced: maximum 100 requests/minute per IP; maximum 10 concurrent sessions per operator.
+All authentication tokens SHALL have a maximum lifetime of 15 minutes with refresh token rotation.
+Vulnerability assessments SHALL be conducted quarterly; penetration tests annually.
+The system SHALL support IP allowlisting for internal service-to-service communication.
+No customer PII SHALL appear in application logs. Log fields SHALL use tokenized/masked representations.
+
+5.3 Reliability and Availability
+The system SHALL have a target availability of 99.9% (approximately 8.7 hours downtime per year).
+Scheduled maintenance SHALL occur during off-peak hours (2:00 AM – 5:00 AM IST) with advance notification.
+The system SHALL implement automated health checks and self-healing for critical services.
+All critical services SHALL have redundant instances deployed across at least 2 availability zones.
+Recovery Time Objective (RTO): 15 minutes; Recovery Point Objective (RPO): 5 minutes.
+
+5.4 Scalability
+The system SHALL support horizontal scaling of all microservices independently.
+Auto-scaling SHALL trigger when CPU utilization exceeds 70% for 2 consecutive minutes.
+The video processing tier SHALL scale from 100 to 2,000 concurrent sessions within 5 minutes.
+The database tier SHALL support read replicas for horizontal scaling of read operations.
+
+5.5 Usability
+The customer-facing UI SHALL achieve a System Usability Scale (SUS) score of at least 75.
+The onboarding flow SHALL be completable in under 15 minutes for a first-time user.
+UI text SHALL be available in English, Hindi, and Marathi at minimum.
+The UI SHALL comply with WCAG 2.1 Level AA accessibility standards.
+Error messages SHALL be human-readable with actionable guidance.
+
+5.6 Maintainability
+All microservices SHALL expose standardized health-check and readiness endpoints.
+Code coverage for unit tests SHALL be maintained at 80% minimum.
+The system SHALL support blue-green deployments with zero-downtime rollouts.
+All configuration (policy rules, thresholds, prompts) SHALL be externalized from the codebase.
+
+6. System Architecture
+6.1 Architecture Overview
+The LWOP follows a cloud-native microservices architecture organized into five logical tiers: Customer Interaction Layer, Orchestration Layer, AI/ML Processing Layer, Data and Storage Layer, and Admin/Compliance Layer. All tiers communicate through an API Gateway with mTLS authentication between services.
+
+6.2 Microservices Breakdown
+Service Name
+Technology Stack
+Responsibility
+Campaign Service
+Node.js / Redis
+Link generation, token validation, expiry management
+Video Session Service
+WebRTC / Mediasoup SFU
+Video/audio session lifecycle management
+STT Processing Service
+Python / FastAPI
+Audio stream relay to STT, transcript management
+CV Age Estimation Service
+Python / PyTorch
+Facial detection, liveness check, age estimation
+Geo-Location Service
+Node.js
+Location capture, validation, and fraud flagging
+Data Extraction Service
+Python / SpaCy + LLM
+NLP entity extraction and form auto-fill logic
+Policy Engine Service
+Java / Drools
+Rule evaluation and eligibility determination
+ML Scoring Service
+Python / FastAPI
+Risk band and propensity model inference
+LLM Intelligence Service
+Python / LangChain
+Contextual classification and structured output
+Offer Engine Service
+Java / Spring Boot
+Loan offer calculation and variant generation
+Audit Service
+Go / PostgreSQL + S3
+Immutable session record storage and retrieval
+Notification Service
+Node.js / Kafka
+SMS, WhatsApp, email delivery via third-party APIs
+
+6.3 Data Flow
+The high-level data flow follows these sequential stages during a customer session:
+Customer accesses campaign link → Campaign Service validates token → Session context created.
+Video Session Service establishes WebRTC connection → audio/video streams begin recording.
+Audio stream routed simultaneously to STT Processing Service → real-time transcription begins.
+Video frames sampled every 5 seconds → sent to CV Age Estimation Service.
+Geo-Location Service captures GPS/IP coordinates at session start.
+STT transcript passed to Data Extraction Service → NLP entity extraction → form auto-fill.
+Extracted data + bureau query sent to Policy Engine Service → eligibility decision.
+Eligible applications: ML Scoring Service invoked → risk band assigned.
+Full transcript + context sent to LLM Intelligence Service → classification JSON returned.
+Offer Engine Service calculates personalized offers → presented to customer.
+All session artifacts stored in Audit Service → Notification Service sends consent receipt.
+
+7. Data Requirements
+7.1 Input Data Specification
+Data Item
+Format
+Source
+Validation
+Video Stream
+H.264 / VP8
+Customer Device
+Min 720p, 25fps
+Audio Stream
+Opus / PCM
+Customer Device
+16 kHz, mono
+Geo-Location
+GPS Coordinates (WGS84)
+Device GPS / IP
+Within India boundary
+Customer Mobile
+E.164 Format
+Campaign Token
+10-digit Indian mobile
+PAN Number
+Alphanumeric (10 chars)
+Customer Verbal / Form
+PAN format regex
+Bureau Records
+JSON (internal schema)
+Internal Bureau API
+Schema validation
+Policy Config
+YAML / JSON
+Config Repository
+Schema + version check
+
+7.2 Intermediate Data
+STT Transcripts: Plain text with word-level timestamps and confidence scores (JSON).
+Age Estimation Output: Estimated age (integer), confidence (float 0–1), liveness score (float 0–1).
+Risk Scores: Credit risk band (enum), default probability (float 0–1), propensity score (float 0–1).
+LLM Classification: JSON object with persona label, anomaly flags, extracted entities, and summary.
+
+7.3 Output Data
+Loan Offers: JSON array of up to 3 offer objects, each containing amount, rate, tenure, EMI, fees.
+Eligibility Status: ENUM (APPROVED / REFER / DECLINED) with reason code and description.
+Consent Receipt: PDF document with session ID, timestamp, transcript excerpt, customer signature (digital).
+Audit Record: Immutable JSON document indexed by session ID, stored in time-series partitioned table.
+
+8. Compliance and Regulatory Requirements
+8.1 KYC Compliance (RBI)
+The system SHALL comply with RBI Master Direction on KYC, 2016 and all subsequent amendments.
+Video KYC SHALL capture: customer face, government-issued ID document on camera, verbal declaration of name and date of birth.
+Video KYC sessions SHALL be conducted only with a live agent or AI proctoring as specified by RBI.
+Video recordings SHALL be retained for a minimum of 5 years.
+
+8.2 Data Protection (DPDPA 2023)
+The system SHALL obtain explicit, informed, and revocable digital consent before collecting any personal data.
+Customers SHALL have the right to access, correct, and request erasure of their data (subject to regulatory retention requirements).
+A Data Processing Agreement SHALL be in place for all third-party service providers.
+Data breach notification SHALL occur within 72 hours of discovery.
+
+8.3 Information Security
+The system SHALL comply with ISO/IEC 27001:2022 standards.
+Annual third-party security audits SHALL be conducted.
+Penetration testing SHALL be conducted before major releases and annually.
+
+8.4 Audit and Traceability
+Every decision (eligibility, offer, rejection) SHALL be traceable to its source data and rule set.
+The system SHALL generate an explanation for every AI-assisted decision in plain language.
+Audit logs SHALL capture: who accessed what data, when, and from where.
+
+9. Testing Requirements
+9.1 Testing Strategy
+Test Type
+Tool / Approach
+Coverage Target
+Unit Testing
+Jest (Node.js), PyTest (Python), JUnit (Java)
+80% code coverage minimum
+Integration Testing
+Postman / Newman, Testcontainers
+All inter-service API contracts
+End-to-End Testing
+Playwright / Cypress
+All customer journey flows (happy path + error)
+Performance Testing
+k6 / Locust
+1,000 concurrent sessions sustained for 30 mins
+Security Testing
+OWASP ZAP, Burp Suite, Trivy
+OWASP Top 10 + container scanning
+AI Model Testing
+Custom test harness
+Age estimation MAE ±3 years on 1,000 test images
+Compliance Testing
+Manual + Automated audit checks
+100% of regulatory checkpoints
+UAT
+Stakeholder-led sessions
+Business acceptance sign-off required
+
+9.2 Acceptance Criteria
+All critical (P1) defects resolved before production go-live.
+Performance targets in Section 5.1 met under sustained load for 30 minutes.
+Zero critical or high OWASP vulnerabilities in production deployment.
+Age estimation model achieves MAE ≤ 3 years on held-out test set.
+STT transcription accuracy ≥ 90% for Indian English under standard network conditions.
+End-to-end loan onboarding completion rate ≥ 80% for unassisted sessions.
+
+10. Appendices
+Appendix A: Revision History
+Version
+Date
+Description
+Author
+1.0
+17/4/2026
+Initial draft SRS document
+System Analyst Team
+
+Appendix B: Glossary of Loan Domain Terms
+Term
+Definition
+EMI
+Fixed monthly payment comprising principal and interest
+APR
+Annual Percentage Rate – total annualized cost of the loan
+Bureau Score
+Credit score derived from historical loan repayment data
+Risk Band
+Categorical classification of credit risk: Low / Medium / High / Very High
+Propensity Score
+ML-derived probability that a customer will repay the loan
+Write-off
+A defaulted loan amount removed from active receivables
+Processing Fee
+One-time fee charged at loan disbursement, typically 1–3% of principal
+
+Appendix C: Risk Register
+Risk
+Likelihood
+Impact
+Mitigation
+STT accuracy degrades for accented speech
+Medium
+High
+Multi-model fallback; human review flag at &lt;80% confidence
+LLM hallucination in classification output
+Low
+High
+Deterministic policy rules override LLM; output validation layer
+CV spoofing via deepfake video
+Low
+Critical
+Liveness detection; passive fraud scoring; session metadata checks
+Bureau API unavailability
+Low
+High
+Circuit breaker; cached score fallback (max 24h); manual review queue
+Regulatory change (RBI/DPDPA)
+Medium
+High
+Policy engine externalized; legal monitoring; quarterly compliance review
+High session concurrency spikes
+Medium
+Medium
+Auto-scaling; load testing; queue-based session admission control
+
+End of Software Requirements Specification
+Poonawalla Fincorp – Loan Wizard | CONFIDENTIAL | v1.0
