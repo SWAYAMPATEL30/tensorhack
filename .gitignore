@@ -1,33 +1,35 @@
-# Python
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+# Env and secrets
 .env
-.venv
-pip-log.txt
-pip-delete-this-directory.txt
+.env.*
+!.env.example
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+.venv/
+venv/
 
 # Node
 node_modules/
-*/node_modules/
-npm-debug.log
-yarn-error.log
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Databases
-*.db
-*.sqlite3
+# Build outputs
+loan-ui/build/
+dist/
 
-# Models / Weights
+# Model and media assets
 *.pt
-*.onnx
-*.weights
-*.h5
+*.task
 
-# OS generated files
+# OS / tooling
 .DS_Store
 Thumbs.db
-*.exe
+.vscode/
+test.py
