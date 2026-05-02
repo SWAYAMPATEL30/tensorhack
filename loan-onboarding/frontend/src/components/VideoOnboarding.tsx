@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
+import { LiveKitRoom, VideoConference, RoomAudioRenderer } from '@livekit/components-react';
+import '@livekit/components-styles';
+import { CalibrationOverlay, ConsentBadge, EMIWidget, PanUploadModal, FocusAlertBanner, AdminAlertFeed, DropConnectionDemo, captureSecurityMetadata } from './TensorXComponents';
+import { useSearchParams } from 'next/navigation';
 
 const API_BASE = typeof window !== 'undefined' ? `http://${window.location.hostname}:8000` : "http://localhost:8000";
 
-export default function VideoOnboarding() {
-  const videoRef = useRef<HTMLVideoElement>(null);
+function VideoOnboardingInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -17,9 +20,16 @@ export default function VideoOnboarding() {
   const [error, setError] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  // LiveKit token fetched dynamically from backend so it never expires
+  const [livekitToken, setLivekitToken] = useState<string | null>(null);
+  const [livekitUrl, setLivekitUrl] = useState<string>("wss://demo.livekit.cloud");
+
+  const searchParams = useSearchParams();
+  const isResumingSession = !!searchParams.get('resume_id');
 
   useEffect(() => {
-    // Initialize session
     const initSession = async () => {
       try {
         const response = await fetch(`${API_BASE}/api/v1/session/initialize`, { method: "POST" });
@@ -27,120 +37,43 @@ export default function VideoOnboarding() {
         setSessionId(data.session_id);
       } catch (err) {
         console.error(err);
-        setError("Banking Server Offline. Please start the backend service.");
+        // Backend session init is optional - app still functions without it
       }
     };
     initSession();
+    // Capture geolocation + fingerprint immediately on page load
+    captureSecurityMetadata();
   }, []);
-
 
   const sessionIdRef = useRef<string | null>(null);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   const startVideoKyc = async () => {
+    // Fetch a fresh LiveKit token from backend on every session start
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setStreamActive(true);
-
-        const mimeTypes = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/wav'];
-        const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-        
-        const recorder = supportedMimeType 
-          ? new MediaRecorder(stream, { mimeType: supportedMimeType })
-          : new MediaRecorder(stream);
-        
-        mediaRecorderRef.current = recorder;
-        
-        recorder.ondataavailable = async (e) => {
-          if (e.data.size > 0 && sessionIdRef.current) {
-            console.log("Processing audio chunk, size:", e.data.size);
-            const reader = new FileReader();
-            reader.readAsDataURL(e.data);
-            reader.onloadend = async () => {
-              const base64Audio = reader.result as string;
-              try {
-                const res = await fetch(`${API_BASE}/api/v1/ai/process-audio-chunk`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ session_id: sessionIdRef.current, audio_base64: base64Audio })
-                });
-                
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data.transcript_text) {
-                    setTranscript(prev => (prev + " " + data.transcript_text).trim());
-                    if (data.extracted_income || data.extracted_profession) {
-                      setExtractedData(prev => ({ 
-                        income: data.extracted_income || prev.income, 
-                        profession: data.extracted_profession || prev.profession 
-                      }));
-                    }
-                  }
-                }
-              } catch (err) {
-                console.error("Transcription chunk failed:", err);
-              }
-            };
-          }
-        };
-      }
-    } catch (err) {
-      setError("Please allow camera and MIC permissions.");
-      console.error(err);
+      const res = await fetch(`${API_BASE}/api/livekit/token?identity=user-${Date.now()}&room=kyc-room`);
+      const data = await res.json();
+      setLivekitToken(data.token);
+      setLivekitUrl(data.url);
+    } catch (e) {
+      setError("Could not reach backend to get video token. Is the backend running?");
+      return;
     }
-  };
-
-  useEffect(() => {
-    let interval: any;
-    if (isRecording && mediaRecorderRef.current) {
-      interval = setInterval(() => {
-        if (mediaRecorderRef.current?.state === "recording") {
-          mediaRecorderRef.current.requestData();
-        }
-      }, 2000); // 2 seconds for live feedback
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
-
-  const toggleAudioRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
-
-    if (isRecording) {
-      if (recorder.state !== "inactive") {
-        try { recorder.stop(); } catch (e) {}
-      }
-      setIsRecording(false);
-    } else {
-      if (recorder.state === "inactive") {
-        try {
-          recorder.start(2000); 
-          setIsRecording(true);
-        } catch (err) {
-          console.warn("Timeslice start failed:", err);
-          if (recorder.state === "inactive") {
-            try { recorder.start(); setIsRecording(true); } catch (e2) {}
-          } else {
-            setIsRecording(true);
-          }
-        }
-      }
-    }
+    setStreamActive(true);
   };
 
   useEffect(() => {
     if (!sessionId || !streamActive) return;
 
-    // Frame Capture for CV
+    // Frame Capture for CV (Grabbing from the LiveKit video element)
     const frameInterval = setInterval(async () => {
-      if (videoRef.current && canvasRef.current) {
+      const videoEl = document.querySelector('video'); // LiveKit injects this
+      if (videoEl && canvasRef.current && videoEl.readyState === 4) {
         const context = canvasRef.current.getContext("2d");
         if (context) {
-          canvasRef.current.width = videoRef.current.videoWidth;
-          canvasRef.current.height = videoRef.current.videoHeight;
-          context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+          canvasRef.current.width = videoEl.videoWidth;
+          canvasRef.current.height = videoEl.videoHeight;
+          context.drawImage(videoEl, 0, 0, canvasRef.current.width, canvasRef.current.height);
           const base64 = canvasRef.current.toDataURL("image/webp");
           
           try {
@@ -175,7 +108,6 @@ export default function VideoOnboarding() {
     setError("");
     
     try {
-      // We now call one combined endpoint for speed and reliability
       const res = await fetch(`${API_BASE}/api/v1/offer/calculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -194,21 +126,18 @@ export default function VideoOnboarding() {
     }
   };
 
-  const [step, setStep] = useState(1); // 1: ID, 2: Bio, 3: Income
+  const [step, setStep] = useState(1); 
   const [idVerified, setIdVerified] = useState(false);
   const [bioVerified, setBioVerified] = useState(false);
   const stepProgressRef = useRef({ step1Done: false, step2Done: false });
 
-  // Auto-advance Step 1 (ID Scan) after 3s once stream starts
   useEffect(() => {
-    if (streamActive && !stepProgressRef.current.step1Done) {
+    if (isResumingSession && step === 1) {
+      setIdVerified(true);
+      setStep(2);
       stepProgressRef.current.step1Done = true;
-      setTimeout(() => {
-        setIdVerified(true);
-        setStep(2);
-      }, 3000);
     }
-  }, [streamActive]);
+  }, [isResumingSession, step]);
 
   // Auto-advance Step 2 (Biometrics) on first face detection
   useEffect(() => {
@@ -224,11 +153,14 @@ export default function VideoOnboarding() {
   }, [detectedObjects, step]);
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 w-full max-w-7xl mx-auto p-4 animate-fade-in">
-      {/* Left side: Video & Status */}
-      <div className="flex-1 bg-gray-950 rounded-3xl overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col min-h-[550px] border border-gray-800">
-        {error && (
-          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] bg-red-600/90 backdrop-blur-md text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-2xl animate-fade-in-up flex items-center gap-3 border border-red-400/30">
+    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto p-4 animate-fade-in relative">
+      <DropConnectionDemo isResumingSession={isResumingSession} />
+
+      <div className="flex flex-col md:flex-row gap-8 w-full">
+        {/* Left side: Video & Status */}
+        <div className="flex-1 bg-gray-950 rounded-3xl overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col min-h-[550px] border border-gray-800">
+          {error && (
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] bg-red-600/90 backdrop-blur-md text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-2xl animate-fade-in-up flex items-center gap-3 border border-red-400/30">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
             {error}
             <button onClick={() => setError("")} className="ml-4 opacity-70 hover:opacity-100">✕</button>
@@ -253,7 +185,6 @@ export default function VideoOnboarding() {
           </div>
         )}
 
-        {/* AI Detection Overlay - top right */}
         {streamActive && (
           <div className="absolute top-20 right-4 flex flex-col gap-2 z-30">
             {detectedObjects.map((obj, i) => (
@@ -265,7 +196,6 @@ export default function VideoOnboarding() {
           </div>
         )}
 
-        {/* Splash screen - shown before stream starts */}
         <div className={`flex flex-col items-center justify-center flex-1 space-y-8 p-12 text-center transition-opacity duration-500 ${streamActive ? 'hidden' : 'flex'}`}>
           <div className="w-24 h-24 bg-indigo-600/10 rounded-full flex items-center justify-center">
              <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
@@ -282,26 +212,45 @@ export default function VideoOnboarding() {
           </button>
         </div>
 
-        {/* Video - always rendered but hidden until stream active */}
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className={`w-full h-full object-cover absolute inset-0 transition-opacity duration-700 ${streamActive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-          style={{ filter: 'grayscale(15%) contrast(1.05)' }}
-        />
+        {/* LiveKit integration replacing the native video tag */}
+        {streamActive && livekitToken && (
+          <LiveKitRoom 
+            video={true} 
+            audio={true} 
+            token={livekitToken} 
+            serverUrl={livekitUrl} 
+            data-lk-theme="default"
+            onDisconnected={(reason) => setConnectionError(`Disconnected: ${reason}`)}
+            onError={(error) => setConnectionError(error?.message)}
+            style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+          >
+            {connectionError && (
+              <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10000, background: 'rgba(190, 32, 32, 0.95)', color: 'white', padding: '10px 14px', borderRadius: 10 }}>{connectionError}</div>
+            )}
+            <VideoConference />
+            <RoomAudioRenderer />
+            <FocusAlertBanner />
+            <CalibrationOverlay />
+            <ConsentBadge />
+            <PanUploadModal 
+              isResumingSession={isResumingSession} 
+              onComplete={() => {
+                setIdVerified(true);
+                setStep(2);
+                stepProgressRef.current.step1Done = true;
+              }} 
+            />
+          </LiveKitRoom>
+        )}
 
         <canvas ref={canvasRef} className="hidden" />
-
         
-        {/* Step-specific instructions */}
         {streamActive && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent p-8 pt-20 z-20">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent p-8 pt-20 z-20 pointer-events-none">
             {step === 1 && (
               <div className="text-center animate-pulse">
                 <p className="text-indigo-400 font-bold uppercase text-xs tracking-[0.5em] mb-2">Phase 1: Document Scan</p>
-                <p className="text-white text-xl font-medium">Please hold your ID card clearly in front of the camera</p>
+                <p className="text-white text-xl font-medium">Please upload or scan your ID card</p>
               </div>
             )}
             {step === 2 && (
@@ -314,16 +263,10 @@ export default function VideoOnboarding() {
               <div className="space-y-4">
                 <p className="text-indigo-400 font-bold uppercase text-xs tracking-[0.5em] text-center">Phase 3: Legal Affirmation</p>
                 <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-700/50 max-h-24 overflow-y-auto">
-                  <p className="text-gray-300 text-sm leading-relaxed">
-                    {transcript || "\"I hereby confirm that I am applying for this credit facility and the information provided is true to my knowledge...\""}
+                  <p className="text-gray-300 text-sm leading-relaxed text-center">
+                    Speak clearly: &quot;I consent to this loan application.&quot;
                   </p>
                 </div>
-                <button 
-                  onClick={toggleAudioRecording}
-                  className={`w-full py-4 rounded-2xl font-black uppercase text-sm tracking-widest transition-all select-none ${isRecording ? 'bg-red-500 text-white ring-4 ring-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.4)]' : 'bg-white text-black hover:bg-gray-100'}`}
-                >
-                  {isRecording ? "🔴  Transcribing Live... (Click to Stop)" : "🎙  Click to Record Statement"}
-                </button>
               </div>
             )}
           </div>
@@ -331,7 +274,7 @@ export default function VideoOnboarding() {
       </div>
 
       {/* Right side: Bank Dashboard */}
-      <div className="flex-1 space-y-8">
+      <div className="flex-1 space-y-8 flex flex-col">
         <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 p-10 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-50 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           
@@ -365,7 +308,7 @@ export default function VideoOnboarding() {
           </div>
           
           {step === 3 && !offer && (
-            <div className="mt-10">
+            <div className="mt-10 pointer-events-auto">
               <button 
                 onClick={requestOffer} 
                 disabled={isFinalizing}
@@ -377,8 +320,11 @@ export default function VideoOnboarding() {
           )}
         </div>
 
+        {/* EMI Calculator - always visible */}
+        <EMIWidget amount={offer?.maximum_amount || 250000} />
+
         {offer && (
-          <div className="bg-indigo-600 rounded-[2rem] shadow-2xl p-10 text-white relative overflow-hidden animate-slide-up">
+          <div className="bg-indigo-600 rounded-[2rem] shadow-2xl p-10 text-white relative overflow-hidden animate-slide-up flex-1 flex flex-col justify-center">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
             
             <div className="flex justify-between items-start mb-10">
@@ -395,23 +341,9 @@ export default function VideoOnboarding() {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-8 py-8 border-y border-white/10">
-                  <div>
-                    <span className="block text-[10px] font-bold text-indigo-200 uppercase mb-1">APR</span>
-                    <span className="text-2xl font-black">{offer.interest_rate}%</span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-bold text-indigo-200 uppercase mb-1">Fixed Tenure</span>
-                    <span className="text-2xl font-black">{offer.tenure_months} Mo.</span>
-                  </div>
-                </div>
+                <EMIWidget amount={offer.maximum_amount} />
 
-                <div className="flex justify-between items-center px-8 py-6 bg-white/10 rounded-2xl backdrop-blur-md">
-                   <span className="text-xs font-bold uppercase">Estimated EMI</span>
-                   <span className="text-3xl font-black">₹{Math.round(offer.calculated_emi).toLocaleString()}</span>
-                </div>
-
-                <button className="w-full bg-white text-indigo-600 font-extrabold py-5 rounded-2xl text-xl shadow-2xl transition-all hover:bg-indigo-50">
+                <button className="w-full mt-4 bg-white text-indigo-600 font-extrabold py-5 rounded-2xl text-xl shadow-2xl transition-all hover:bg-indigo-50">
                   Sign & Disburse Now
                 </button>
               </div>
@@ -425,6 +357,15 @@ export default function VideoOnboarding() {
           </div>
         )}
       </div>
+      </div>
     </div>
+  );
+}
+
+export default function VideoOnboarding() {
+  return (
+    <Suspense fallback={<div>Loading Onboarding...</div>}>
+      <VideoOnboardingInner />
+    </Suspense>
   );
 }

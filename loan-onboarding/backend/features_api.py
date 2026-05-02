@@ -432,4 +432,133 @@ async def stress_test(data: dict):
 async def feature_status():
     return {"total": 75, "live": 44, "mock": 20, "hypothetical": 11, "modules_loaded": _FEATURES_OK, "timestamp": time.time()}
 
-print("[OK] 75 Feature endpoints registered")
+
+# --- TENSORX HYBRID INTEGRATION ENDPOINTS ---
+import easyocr
+import cv2
+import numpy as np
+import re
+from fastapi import File, UploadFile, Request
+import aiohttp
+import uuid
+import os
+
+print("Loading EasyOCR for TensorX integration...")
+try:
+    reader = easyocr.Reader(['en'], gpu=False) # Fallback to CPU to avoid torch cuda issues if not available
+except:
+    reader = None
+
+@app.post("/api/kyc/upload-pan")
+async def upload_pan(file: UploadFile = File(...)):
+    if not reader:
+        return {"status": "error", "message": "EasyOCR not initialized"}
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    results = reader.readtext(img, detail=0)
+    raw_text = " ".join(results).upper()
+
+    clean_text = re.sub(r'[^A-Z0-9]', '', raw_text)
+
+    found_pan = None
+    for i in range(len(clean_text) - 9):
+        candidate = list(clean_text[i:i+10])
+        
+        for j in range(5):
+            if candidate[j] == '0': candidate[j] = 'O'
+            elif candidate[j] == '1': candidate[j] = 'I'
+            elif candidate[j] == '5': candidate[j] = 'S'
+            elif candidate[j] == '8': candidate[j] = 'B'
+            
+        for j in range(5, 9):
+            if candidate[j] == 'O': candidate[j] = '0'
+            elif candidate[j] == 'I': candidate[j] = '1'
+            elif candidate[j] == 'S': candidate[j] = '5'
+            elif candidate[j] == 'B': candidate[j] = '8'
+            elif candidate[j] == 'Z': candidate[j] = '2'
+            
+        if candidate[9] == '0': candidate[9] = 'O'
+        elif candidate[9] == '1': candidate[9] = 'I'
+        elif candidate[9] == '5': candidate[9] = 'S'
+        elif candidate[9] == '8': candidate[9] = 'B'
+        
+        final_str = "".join(candidate)
+        
+        if re.fullmatch(r'[A-Z]{5}[0-9]{4}[A-Z]', final_str):
+            found_pan = final_str
+            break
+
+    if found_pan:
+        return {"status": "success", "pan": found_pan}
+    else:
+        return {"status": "error", "message": f"Could not extract PAN. Raw OCR saw: {raw_text[:100]}..."}
+
+alert_queue = asyncio.Queue()
+
+@app.post("/api/admin/trigger-alert")
+async def trigger_alert(request: Request):
+    data = await request.json()
+    await alert_queue.put(json.dumps(data)) 
+    print(f"🚨 [SYSTEM] Received Fraud Alert: {data}")
+    return {"status": "Alert queued"}
+
+APP_PUBLIC_BASE_URL = os.getenv("APP_PUBLIC_BASE_URL", "http://localhost:3000")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER")
+SMS_DEFAULT_COUNTRY_CODE = os.getenv("SMS_DEFAULT_COUNTRY_CODE", "+91")
+
+@app.post("/api/kyc/simulate-drop")
+async def simulate_drop(request: Request):
+    data = await request.json()
+    phone = data.get("phone", "9930350234")
+    
+    resume_id = str(uuid.uuid4())[:8]
+    recovery_link = f"{APP_PUBLIC_BASE_URL}/?resume_id={resume_id}"
+    sms_message = f"TensorX KYC Drop Detected. Resume here: {recovery_link}"
+    
+    print(f"\n📡 [REDIS] State saved for session: {resume_id}")
+    print(f"📱 [Twilio] Sending SMS to {phone}: {sms_message}\n")
+    
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
+        return {"status": "success", "resume_id": resume_id, "link": recovery_link, "warning": "Twilio not configured, SMS not actually sent."}
+
+    normalized_phone = phone.replace(" ", "")
+    if normalized_phone.startswith("+"):
+        to_number = normalized_phone
+    elif normalized_phone.isdigit() and len(normalized_phone) == 10:
+        to_number = f"{SMS_DEFAULT_COUNTRY_CODE}{normalized_phone}"
+    else:
+        return {"status": "error", "message": "Invalid phone format."}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            resp = await session.post(
+                f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json",
+                auth=aiohttp.BasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN),
+                data={"From": TWILIO_FROM_NUMBER, "To": to_number, "Body": sms_message}
+            )
+            if resp.status >= 400:
+                return {"status": "error", "message": "Twilio request failed."}
+    except Exception as exc:
+        return {"status": "error", "message": f"Twilio error: {exc}"}
+
+    return {"status": "success", "resume_id": resume_id, "link": recovery_link}
+
+# --- Replace the SSE stream generator to use the hybrid queue ---
+from fastapi.responses import StreamingResponse
+from typing import AsyncGenerator
+
+async def event_generator() -> AsyncGenerator[str, None]:
+    while True:
+        alert_json_str = await alert_queue.get()
+        yield f"data: {alert_json_str}\n\n"
+
+# Overriding the existing /api/admin/alerts/stream to use our new generator
+@app.get("/api/admin/alerts/stream_v2")
+async def sse_alerts_stream_v2():
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+print("[OK] 75 Feature endpoints registered + TensorX Hybrid Endpoints")
