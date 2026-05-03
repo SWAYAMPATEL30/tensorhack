@@ -156,7 +156,6 @@ To deploy the TensorX environment locally:
 
 ### Project Assets
 - Project Repository & Video Demo: [View Assets](https://drive.google.com/drive/folders/12bjbNCqGsVcn5J2XMJx9hXwc2LxbyQay?usp=sharing)
-- 
 ---
 
 ### Conclusion
