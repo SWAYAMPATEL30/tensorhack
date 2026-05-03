@@ -9,6 +9,18 @@ import '@livekit/components-styles';
 import { useState, useRef, useEffect } from 'react';
 import fpPromise from '@fingerprintjs/fingerprintjs';
 
+const BACKEND = 'http://localhost:8000';
+
+// Decode room name from LiveKit JWT without any library
+function getRoomFromToken(jwt: string): string {
+  try {
+    const payload = JSON.parse(atob(jwt.split('.')[1]));
+    return payload?.video?.room || 'kyc-room';
+  } catch {
+    return 'kyc-room';
+  }
+}
+
 // --- FRAUD ENGINE: Captures Features 8 & 9 ---
 const captureSecurityMetadata = async () => {
   try {
@@ -419,9 +431,232 @@ function DropConnectionDemo() {
     </div>
   );
 }
-// --- MAIN APP COMPONENT ---
+
+// ─── CONVERSATION TABLE (Real-time KYC + CIBIL + Loan Decision) ────────────
+const FIELD_LABELS: Record<string, string> = {
+  name:            '👤 Full Name',
+  dob:             '🎂 Date of Birth',
+  employment_type: '💼 Employment',
+  monthly_income:  '💰 Monthly Income',
+  existing_emi:    '📋 Existing EMI',
+  loan_purpose:    '🏠 Loan Purpose',
+  loan_amount:     '💵 Loan Amount',
+  pan_number:      '🪪 PAN Number',
+  status:          '📌 Status',
+  cibil_score:     '📊 CIBIL Score',
+};
+
+function ConversationTable({ roomName }: { roomName: string }) {
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [loanDecision, setLoanDecision] = useState<any>(null);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (!roomName) return;
+    let es: EventSource;
+    let retryTimer: ReturnType<typeof setTimeout>;
+
+    const connect = () => {
+      es = new EventSource(`${BACKEND}/api/kyc/conversation-stream/${roomName}`);
+
+      es.onopen = () => setConnected(true);
+
+      es.onmessage = (event) => {
+        try {
+          const { field, value } = JSON.parse(event.data);
+          if (field === 'loan_decision') {
+            setLoanDecision(JSON.parse(value));
+          } else {
+            setFields(prev => ({ ...prev, [field]: value }));
+          }
+        } catch {}
+      };
+
+      es.onerror = () => {
+        setConnected(false);
+        es.close();
+        // Auto-reconnect after 3 s
+        retryTimer = setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+    return () => { es?.close(); clearTimeout(retryTimer); };
+  }, [roomName]);
+
+  const displayFields = Object.entries(FIELD_LABELS).filter(
+    ([k]) => k !== 'cibil_score' && k !== 'status'
+  );
+
+  const cibil = fields['cibil_score'];
+  const status = fields['status'];
+
+  const getCibilColor = (score: number) =>
+    score >= 750 ? '#10b981' : score >= 700 ? '#3b82f6' : score >= 650 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: '20px', right: '20px',
+      width: '370px', maxHeight: '92vh', overflowY: 'auto',
+      background: 'rgba(15, 23, 42, 0.97)',
+      border: '1px solid rgba(99, 102, 241, 0.5)',
+      borderRadius: '16px', padding: '16px',
+      color: '#fff', zIndex: 9999,
+      boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      backdropFilter: 'blur(12px)',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '18px' }}>🤖</span>
+          <span style={{ fontWeight: 700, fontSize: '14px', color: '#818cf8' }}>AI Appraisal Panel</span>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '5px',
+          fontSize: '10px', color: connected ? '#10b981' : '#f59e0b',
+          fontWeight: 600,
+        }}>
+          <span style={{
+            width: '7px', height: '7px', borderRadius: '50%',
+            background: connected ? '#10b981' : '#f59e0b',
+            animation: connected ? 'pulse 2s infinite' : 'none',
+            display: 'inline-block',
+          }} />
+          {connected ? 'LIVE' : 'RECONNECTING…'}
+        </div>
+      </div>
+
+      {/* CIBIL Score Badge */}
+      {cibil && (
+        <div style={{
+          background: 'rgba(255,255,255,0.06)',
+          border: `2px solid ${getCibilColor(Number(cibil))}`,
+          borderRadius: '12px', padding: '12px 16px',
+          marginBottom: '12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          animation: 'fadeInDown 0.4s ease',
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>📊 CIBIL Score (Mock Bureau)</div>
+            <div style={{ fontSize: '28px', fontWeight: 800, color: getCibilColor(Number(cibil)) }}>{cibil}</div>
+          </div>
+          <div style={{
+            background: getCibilColor(Number(cibil)), borderRadius: '8px',
+            padding: '4px 10px', fontSize: '12px', fontWeight: 700, color: '#fff',
+          }}>
+            {Number(cibil) >= 750 ? 'EXCELLENT' : Number(cibil) >= 700 ? 'GOOD' : Number(cibil) >= 650 ? 'FAIR' : 'POOR'}
+          </div>
+        </div>
+      )}
+
+      {/* KYC Fields Table */}
+      <div style={{ marginBottom: '10px' }}>
+        {displayFields.map(([key, label]) => (
+          <div key={key} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            padding: '7px 0',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+          }}>
+            <span style={{ fontSize: '11px', color: '#64748b', flex: '0 0 140px' }}>{label}</span>
+            <span style={{
+              fontSize: '12px', fontWeight: 600,
+              color: fields[key] ? '#e2e8f0' : '#334155',
+              textAlign: 'right', wordBreak: 'break-word',
+              animation: fields[key] ? 'fadeIn 0.3s ease' : 'none',
+            }}>
+              {fields[key]
+                ? (key === 'monthly_income' || key === 'existing_emi' || key === 'loan_amount'
+                    ? `₹${Number(fields[key]).toLocaleString('en-IN')}`
+                    : fields[key])
+                : <span style={{ fontStyle: 'italic', color: '#1e293b' }}>Awaiting…</span>
+              }
+            </span>
+          </div>
+        ))}
+
+        {/* Status row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0' }}>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>📌 Status</span>
+          <span style={{
+            fontSize: '11px', fontWeight: 700, padding: '2px 10px', borderRadius: '100px',
+            background: status === 'complete' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.15)',
+            color: status === 'complete' ? '#10b981' : '#f59e0b',
+          }}>
+            {status === 'complete' ? '✅ COMPLETE' : (status || '⏳ IN PROGRESS')}
+          </span>
+        </div>
+      </div>
+
+      {/* Loan Decision Card */}
+      {loanDecision ? (
+        <div style={{
+          borderRadius: '12px', padding: '14px',
+          background: loanDecision.decision === 'APPROVED'
+            ? 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))'
+            : 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(185,28,28,0.1))',
+          border: loanDecision.decision === 'APPROVED' ? '1px solid #10b981' : '1px solid #ef4444',
+          animation: 'fadeInUp 0.5s ease',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '22px' }}>{loanDecision.decision === 'APPROVED' ? '✅' : '❌'}</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '16px', color: loanDecision.decision === 'APPROVED' ? '#10b981' : '#ef4444' }}>
+                {loanDecision.decision}
+              </div>
+              <div style={{ fontSize: '10px', color: '#64748b' }}>Risk: {loanDecision.risk_band} | CIBIL: {loanDecision.cibil_score}</div>
+            </div>
+          </div>
+
+          {loanDecision.decision === 'APPROVED' && (
+            <>
+              {[['Loan Amount', `₹${Number(loanDecision.offer_amount).toLocaleString('en-IN')}`],
+                ['Rate', `${loanDecision.offer_rate}% p.a.`],
+                ['Tenure', `${loanDecision.offer_tenure} months`],
+                ['Monthly EMI', `₹${Math.round(loanDecision.offer_emi).toLocaleString('en-IN')}`]
+              ].map(([label, val]) => (
+                <div key={label} style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  fontSize: '12px', padding: '4px 0',
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <span style={{ color: '#94a3b8' }}>{label}</span>
+                  <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{val}</span>
+                </div>
+              ))}
+            </>
+          )}
+
+          {loanDecision.decision === 'REJECTED' && loanDecision.reason && (
+            <div style={{ fontSize: '12px', color: '#fca5a5', marginTop: '4px' }}>
+              Reason: {loanDecision.reason}
+            </div>
+          )}
+        </div>
+      ) : status !== 'complete' ? (
+        <div style={{ textAlign: 'center', padding: '12px 0', color: '#334155', fontSize: '12px' }}>
+          ⏳ Waiting for KYC completion…
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '12px 0', color: '#f59e0b', fontSize: '12px' }}>
+          ⚙️ Computing loan decision…
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeInDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+    </div>
+  );
+}
+
 export default function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  // Decode room name from the LiveKit JWT so the SSE stream uses the correct room
+  const roomName = token ? getRoomFromToken(token) : 'kyc-room';
 
   if (!serverUrl || !token) {
     return (
@@ -448,8 +683,10 @@ export default function App() {
         <FocusAlertBanner />
         <CalibrationOverlay />
         <ConsentBadge />
-        <EMIWidget />
         <AdminAlertFeed />
+
+        {/* LIVE KYC DATA + CIBIL + LOAN DECISION — replaces the static EMIWidget */}
+        <ConversationTable roomName={roomName} />
         
         <VideoConference />
         <RoomAudioRenderer />

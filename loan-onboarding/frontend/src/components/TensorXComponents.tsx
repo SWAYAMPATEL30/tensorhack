@@ -57,15 +57,25 @@ export function CalibrationOverlay() {
   if (!calibrationMsg) return null;
 
   return (
-    <div style={{
-      position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)',
-      zIndex: 10000, textAlign: 'center', pointerEvents: 'none'
-    }}>
-      <div style={{
-        background: 'rgba(0, 0, 0, 0.85)', color: '#00ff00',
-        padding: '12px 24px', borderRadius: '100px', border: '2px solid #00ff00', fontSize: '18px', fontWeight: 'bold',
-      }}>
-        🎯 CALIBRATING: {calibrationMsg}s
+    <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-black/40 backdrop-blur-[2px]">
+      <div className="bg-gray-900/90 border border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.3)] rounded-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center animate-fade-in-up">
+        <div className="w-16 h-16 relative mb-6">
+          <div className="absolute inset-0 border-4 border-indigo-500/30 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <h3 className="text-xl font-black text-white tracking-tight mb-2">NEURAL CALIBRATION</h3>
+        <p className="text-sm text-indigo-200 text-center mb-6 leading-relaxed">
+          Please look directly into the camera to establish baseline biometric focus.
+        </p>
+        <div className="w-full bg-gray-800 rounded-full h-2 mb-3 overflow-hidden">
+          <div 
+            className="bg-indigo-500 h-2 rounded-full transition-all duration-1000 ease-linear"
+            style={{ width: `${(5 - parseInt(calibrationMsg)) * 20}%` }}
+          ></div>
+        </div>
+        <div className="text-xs font-bold text-gray-400 tracking-widest">
+          {calibrationMsg} SECONDS REMAINING
+        </div>
       </div>
     </div>
   );
@@ -178,8 +188,8 @@ export function EMIWidget({ amount: initialAmount = 100000 }) {
 }
 
 // --- PAN UPLOAD MODAL (Feature 69: WebP Compression Added) ---
-export function PanUploadModal({ isResumingSession, onComplete }: { isResumingSession: boolean, onComplete: () => void }) {
-  const [uploadRequired, setUploadRequired] = useState(false);
+export function PanUploadModal({ isResumingSession, onComplete, roomName }: { isResumingSession: boolean, onComplete: () => void, roomName: string }) {
+  const [uploadRequired, setUploadRequired] = useState(!isResumingSession);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -259,6 +269,15 @@ export function PanUploadModal({ isResumingSession, onComplete }: { isResumingSe
 
           if (response.ok && result.status === 'success') {
             try { send(new TextEncoder().encode('pan_upload_success'), { reliable: true }); } catch (e) {}
+            
+            if (roomName) {
+              fetch('http://localhost:8000/api/kyc/conversation-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_name: roomName, field: 'pan_number', value: result.pan })
+              }).catch(() => {});
+            }
+
             setUploadRequired(false); 
             alert(`✅ PAN Verified: ${result.pan}\n\n[Feature 69: WebP Active]\nPayload compressed by ${savingsPercent}%\nOriginal: ${originalKb}KB -> Sent: ${compressedKb}KB`);
             onComplete();
@@ -413,6 +432,150 @@ export function DropConnectionDemo({ isResumingSession }: { isResumingSession: b
         ⚡ Simulate Network Drop (Send SMS)
       </button>
       {phoneError && <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: 'bold' }}>{phoneError}</div>}
+    </div>
+  );
+}
+
+// --- REAL-TIME CONVERSATION DATA TABLE (Feature: Live KYC Field Extraction) ---
+const FIELD_META: Record<string, { label: string; icon: string }> = {
+  name:            { label: 'Full Name',        icon: '👤' },
+  dob:             { label: 'Date of Birth',    icon: '🎂' },
+  employment_type: { label: 'Employment Type',  icon: '💼' },
+  monthly_income:  { label: 'Monthly Income',   icon: '💰' },
+  existing_emi:    { label: 'Existing EMI',     icon: '📋' },
+  loan_purpose:    { label: 'Loan Purpose',     icon: '🎯' },
+  loan_amount:     { label: 'Loan Amount',      icon: '🏦' },
+  pan_number:      { label: 'PAN Number',       icon: '🪪' },
+};
+
+export function ConversationTable({ roomName, onComplete, onFieldUpdate }: { roomName: string, onComplete?: () => void, onFieldUpdate?: (field: string, value: string) => void }) {
+  const [fields, setFields] = React.useState<Record<string, string>>({});
+  const [status, setStatus] = React.useState<'waiting' | 'in_progress' | 'complete'>('waiting');
+  const [lastUpdated, setLastUpdated] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    if (!roomName) return;
+    const es = new EventSource(`http://localhost:8000/api/kyc/conversation-stream/${roomName}`);
+    es.onmessage = (event) => {
+      try {
+        const { field, value } = JSON.parse(event.data);
+        if (field === 'status') {
+          setStatus(value as 'complete' | 'in_progress');
+        } else {
+          setFields(prev => ({ ...prev, [field]: value }));
+          setLastUpdated(new Date().toLocaleTimeString());
+          // Propagate each field to parent for AI Appraisal live updates
+          if (onFieldUpdate) onFieldUpdate(field, value);
+        }
+      } catch {}
+    };
+    es.onerror = () => { /* silent reconnect */ };
+    return () => es.close();
+  }, [roomName, onFieldUpdate]);
+
+  // Use a ref to ensure onComplete is always the latest without adding it to dependency array
+  const onCompleteRef = React.useRef(onComplete);
+  React.useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  React.useEffect(() => {
+    if (status === 'complete' && onCompleteRef.current) {
+      onCompleteRef.current();
+    }
+  }, [status]);
+
+  const filledCount = Object.keys(fields).filter(k => k !== 'status' && fields[k]).length;
+  const totalFields = Object.keys(FIELD_META).length;
+  const progress = Math.round((filledCount / totalFields) * 100);
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+      border: '1px solid #334155', borderRadius: '16px', padding: '20px',
+      color: '#fff', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.05em' }}>
+            🤖 AI EXTRACTION — LIVE
+          </h3>
+          <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#94a3b8' }}>
+            Fields auto-populate as Aria speaks with applicant
+          </p>
+        </div>
+        <div style={{
+          background: status === 'complete' ? '#10b981' : status === 'in_progress' ? '#6366f1' : '#475569',
+          padding: '4px 12px', borderRadius: '100px', fontSize: '11px', fontWeight: 700
+        }}>
+          {status === 'complete' ? '✅ COMPLETE' : status === 'in_progress' ? '🔴 LIVE' : '⏳ WAITING'}
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div style={{ background: '#1e293b', borderRadius: '100px', height: '6px', marginBottom: '16px', overflow: 'hidden' }}>
+        <div style={{
+          width: `${progress}%`, height: '100%',
+          background: 'linear-gradient(90deg, #6366f1, #818cf8)',
+          borderRadius: '100px', transition: 'width 0.5s ease'
+        }} />
+      </div>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px', textAlign: 'right' }}>
+        {filledCount}/{totalFields} fields captured • {progress}%
+      </div>
+
+      {/* Fields Table */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {Object.entries(FIELD_META).map(([key, meta]) => {
+          const value = fields[key];
+          const filled = !!value;
+          return (
+            <div key={key} style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              background: filled ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
+              border: `1px solid ${filled ? 'rgba(99,102,241,0.3)' : '#1e293b'}`,
+              borderRadius: '10px', padding: '10px 14px',
+              transition: 'all 0.3s ease'
+            }}>
+              <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{meta.icon}</span>
+              <span style={{ fontSize: '12px', color: '#94a3b8', width: '130px', flexShrink: 0, fontWeight: 600 }}>
+                {meta.label}
+              </span>
+              <div style={{ flex: 1, borderLeft: '1px solid #334155', paddingLeft: '12px' }}>
+                {filled ? (
+                  <span style={{
+                    fontSize: '14px', fontWeight: 700, color: '#e2e8f0',
+                    animation: 'fadeIn 0.4s ease'
+                  }}>
+                    {value}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#475569', fontStyle: 'italic' }}>
+                    Awaiting response...
+                  </span>
+                )}
+              </div>
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                background: filled ? '#10b981' : '#334155',
+                boxShadow: filled ? '0 0 8px rgba(16,185,129,0.6)' : 'none',
+                transition: 'all 0.3s ease'
+              }} />
+            </div>
+          );
+        })}
+      </div>
+
+      {lastUpdated && (
+        <p style={{ margin: '12px 0 0', fontSize: '10px', color: '#475569', textAlign: 'right' }}>
+          Last updated: {lastUpdated}
+        </p>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: translateX(0); } }
+      `}</style>
     </div>
   );
 }

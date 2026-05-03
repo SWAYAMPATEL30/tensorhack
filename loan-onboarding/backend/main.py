@@ -108,6 +108,19 @@ def init_db():
         frame_id TEXT, timestamp TEXT, estimated_age REAL,
         liveness_score REAL, confidence REAL, detected_objects TEXT
     );
+    CREATE TABLE IF NOT EXISTS kyc_conversation (
+        room_name TEXT PRIMARY KEY,
+        updated_at TEXT,
+        name TEXT,
+        dob TEXT,
+        employment_type TEXT,
+        monthly_income TEXT,
+        existing_emi TEXT,
+        loan_purpose TEXT,
+        loan_amount TEXT,
+        pan_number TEXT,
+        status TEXT DEFAULT 'in_progress'
+    );
     """)
     conn.commit(); conn.close()
 
@@ -1189,4 +1202,161 @@ async def get_livekit_token(identity: str = "user1", room: str = "kyc-room"):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Token generation failed: {e}")
 
+# ==========================================
+# CONVERSATION DATA — Real-time KYC Fields
+# ==========================================
+
+ALLOWED_FIELDS = {"name", "dob", "employment_type", "monthly_income",
+                  "existing_emi", "loan_purpose", "loan_amount", "pan_number", "status"}
+
+# In-memory subscribers for SSE per room
+import asyncio as _asyncio
+_conv_subscribers: dict = {}
+
+class _ConvUpdate(BaseModel):
+    room_name: str
+    field: str
+    value: str
+
+@app.post("/api/kyc/conversation-update")
+async def conversation_update(payload: _ConvUpdate):
+    if payload.field not in ALLOWED_FIELDS:
+        raise HTTPException(status_code=400, detail=f"Unknown field: {payload.field}")
+    conn = get_db()
+    # Upsert row for this room
+    conn.execute("""
+        INSERT INTO kyc_conversation (room_name, updated_at)
+        VALUES (?, ?)
+        ON CONFLICT(room_name) DO UPDATE SET updated_at=excluded.updated_at
+    """, (payload.room_name, datetime.datetime.utcnow().isoformat()))
+    conn.execute(f"UPDATE kyc_conversation SET {payload.field}=?, updated_at=? WHERE room_name=?",
+                 (payload.value, datetime.datetime.utcnow().isoformat(), payload.room_name))
+    conn.commit(); conn.close()
+    # Notify all SSE listeners for this room
+    event_data = json.dumps({"field": payload.field, "value": payload.value})
+    for q in _conv_subscribers.get(payload.room_name, []):
+        await q.put(event_data)
+
+    # ── AUTO LOAN DECISION: when status=complete, pull CIBIL + compute offer ──
+    if payload.field == "status" and payload.value == "complete":
+        asyncio.create_task(_run_loan_decision(payload.room_name))
+
+    return {"status": "saved", "field": payload.field}
+
+async def _run_loan_decision(room_name: str):
+    """Pull mock CIBIL, run credit risk, compute offer and push loan_decision via SSE."""
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT * FROM kyc_conversation WHERE room_name=?", (room_name,)).fetchone()
+        conn.close()
+        if not row:
+            return
+
+        pan_number = row["pan_number"] or "ABCDE1234F"
+        name       = row["name"]       or "Applicant"
+        dob        = row["dob"]        or "1990-01-01"
+        emp_type   = row["employment_type"] or "salaried"
+        monthly_income = int(row["monthly_income"]) if row["monthly_income"] else 50000
+        existing_emi   = int(row["existing_emi"])   if row["existing_emi"]   else 0
+        loan_amount    = int(row["loan_amount"])     if row["loan_amount"]    else 0
+
+        # 1. Pull mock CIBIL
+        from feature_modules.bureau_mock import BureauPayload as _BP, pull_single_bureau as _psb
+        bp = _BP(session_id=room_name, pan_number=pan_number, dob=dob, name=name)
+        bureau_result = _psb(bp)
+        cibil_score = bureau_result.get("score", 700)
+        bureau_band = bureau_result.get("bureau_band", "GOOD")
+
+        # Push CIBIL score as its own field event so the table shows it immediately
+        cibil_event = json.dumps({"field": "cibil_score", "value": str(cibil_score)})
+        for q in _conv_subscribers.get(room_name, []):
+            await q.put(cibil_event)
+
+        # 2. Run credit risk model
+        emi_ratio = round(existing_emi / max(monthly_income, 1), 3)
+        risk_prob, risk_band = _credit_risk(
+            age=30, income=monthly_income, emp=emp_type,
+            yrs=5, loans=0, score=cibil_score,
+            emi=emi_ratio, geo=0, stress=0.15
+        )
+
+        # 3. Compute loan offers
+        offers = _offers(monthly_income, cibil_score, risk_band)
+        best   = offers[0]
+
+        # Decide approval
+        approved  = risk_band != "HIGH" and cibil_score >= 600
+        decision  = "APPROVED" if approved else "REJECTED"
+        reason    = "" if approved else ("Low CIBIL score" if cibil_score < 600 else "High risk profile")
+
+        loan_decision_payload = {
+            "field": "loan_decision",
+            "value": json.dumps({
+                "decision":    decision,
+                "reason":      reason,
+                "cibil_score": cibil_score,
+                "bureau_band": bureau_band,
+                "risk_band":   risk_band,
+                "offer_amount":  best["amount"]        if approved else 0,
+                "offer_rate":    best["rate"]           if approved else 0,
+                "offer_tenure":  best["tenure_months"]  if approved else 0,
+                "offer_emi":     best["emi"]             if approved else 0,
+            })
+        }
+        decision_event = json.dumps(loan_decision_payload)
+        for q in _conv_subscribers.get(room_name, []):
+            await q.put(decision_event)
+
+        print(f"[LOAN] {room_name}: {decision} | CIBIL={cibil_score} | Risk={risk_band}")
+    except Exception as e:
+        print(f"[LOAN] Decision failed for {room_name}: {e}")
+
+@app.get("/api/kyc/conversation-data/{room_name}")
+def conversation_snapshot(room_name: str):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM kyc_conversation WHERE room_name=?", (room_name,)).fetchone()
+    conn.close()
+    if not row:
+        return {"room_name": room_name, "fields": {}}
+    fields = {k: row[k] for k in row.keys() if k not in ("room_name", "updated_at")}
+    return {"room_name": room_name, "fields": fields, "updated_at": row["updated_at"]}
+
+async def _conv_event_generator(room_name: str):
+    q: _asyncio.Queue = _asyncio.Queue()
+    _conv_subscribers.setdefault(room_name, []).append(q)
+    try:
+        # Send current snapshot first so reconnecting clients get full state
+        conn = get_db()
+        row = conn.execute("SELECT * FROM kyc_conversation WHERE room_name=?", (room_name,)).fetchone()
+        conn.close()
+        if row:
+            for k in row.keys():
+                if k not in ("room_name", "updated_at") and row[k]:
+                    yield f"data: {json.dumps({'field': k, 'value': row[k]})}\n\n"
+        # Stream live updates — also send a keepalive comment every 15 s
+        while True:
+            try:
+                data = await _asyncio.wait_for(q.get(), timeout=15)
+                yield f"data: {data}\n\n"
+            except _asyncio.TimeoutError:
+                yield ": keepalive\n\n"  # SSE comment — keeps connection alive
+    finally:
+        subs = _conv_subscribers.get(room_name, [])
+        if q in subs:
+            subs.remove(q)
+
+@app.get("/api/kyc/conversation-stream/{room_name}")
+async def conversation_stream(room_name: str):
+    headers = {
+        "Cache-Control":   "no-cache",
+        "X-Accel-Buffering": "no",   # Disable nginx buffering
+        "Access-Control-Allow-Origin": "*",
+    }
+    return StreamingResponse(
+        _conv_event_generator(room_name),
+        media_type="text/event-stream",
+        headers=headers,
+    )
+
 print("[OK] TensorX Hybrid Endpoints Registered")
+print("[OK] Conversation Data Endpoints Registered")
