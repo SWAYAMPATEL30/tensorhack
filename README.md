@@ -3,7 +3,6 @@
 
 ---
 
-![TensorX Hero Overview](./_- visual selection (4).png)
 
 ### Executive Summary
 TensorX is a high-performance, agentic AI platform designed to revolutionize the digital loan onboarding process for Poonawalla Fincorp. By utilizing a decentralized swarm of 75 specialized AI micro-agents, TensorX reduces the total time-to-sanction from 3 days to 10.6 seconds. The system delivers a 96% reduction in operational expenditure while ensuring 100% compliance with RBI V-CIP and DPDPA 2023 regulations.
