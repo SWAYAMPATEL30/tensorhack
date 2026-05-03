@@ -3,6 +3,8 @@
 
 ---
 
+![TensorX Hero Overview](./_- visual selection (4).png)
+
 ### Executive Summary
 TensorX is a high-performance, agentic AI platform designed to revolutionize the digital loan onboarding process for Poonawalla Fincorp. By utilizing a decentralized swarm of 75 specialized AI micro-agents, TensorX reduces the total time-to-sanction from 3 days to 10.6 seconds. The system delivers a 96% reduction in operational expenditure while ensuring 100% compliance with RBI V-CIP and DPDPA 2023 regulations.
 
@@ -20,6 +22,8 @@ Traditional digital lending journeys suffer from systemic friction:
 Aria is a real-time, voice-first autonomous agent that manages the entire onboarding journey via a single WebRTC session. Aria replaces static forms with a trust-based conversation, conducting verification, risk assessment, and sanctioning in parallel.
 
 #### Core Onboarding Workflow
+![Onboarding Workflow](./_- visual selection (1).png)
+
 ```mermaid
 graph TD
     A[Applicant Starts Video Call] --> B[Real-time Liveness & Deepfake Detection]
@@ -45,10 +49,14 @@ The system is built on a sub-100ms latency pipeline designed for enterprise scal
 - Stream Processing: WebSocket-based state synchronization for real-time model inference.
 - AI Orchestration: Proprietary agentic swarm managing 75 parallel micro-models.
 
+![System Architecture Diagram](./_- visual selection (3).png)
+
 ---
 
 ### The 75-Feature Agentic Ecosystem
 TensorX utilizes a multi-layered swarm of specialized agents to ensure absolute security and precision.
+
+![Feature Ecosystem Swarm](./_- visual selection (2).png)
 
 #### 1. Biometric & Vision Swarm (15 Agents)
 - Continuous Face Liveness Detection.
@@ -103,6 +111,8 @@ TensorX utilizes a multi-layered swarm of specialized agents to ensure absolute 
 ---
 
 ### Performance & Business Metrics
+![Admin Success Dashboard](./jsk_dashboard_preview.png)
+
 - Onboarding Speed: 10.6 Seconds (Mean Time to Sanction).
 - Cost Efficiency: ₹45 per applicant (compared to industry standard ₹1,200).
 - Decision Accuracy: 99.2% (Validated against historical PFL datasets).
