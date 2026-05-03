@@ -59,10 +59,10 @@ def reverse_geocode(lat: float, lng: float) -> str:
     return best
 
 def get_ip_city(ip: str) -> str:
-    """Mock IP geolocation — in prod use ip-api.com."""
+    """Mock IP geolocation — in prod use ipapi.co."""
     try:
         import requests
-        r = requests.get(f"http://ip-api.com/json/{ip}", timeout=2)
+        r = requests.get(f"https://ipapi.co/{ip}/json/", headers={"User-Agent": "LoanWizard/1.0"}, timeout=2)
         if r.status_code == 200:
             data = r.json()
             return data.get("city", "Unknown")

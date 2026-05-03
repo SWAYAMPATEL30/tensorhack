@@ -204,18 +204,26 @@ function drawFaceBox() {
   ctx.fillStyle = '#10B981'; ctx.font = '11px Inter'; ctx.fillText('LIVE APPLICANT ✓', bx, by-6);
 }
 
+let wsAudio = null;
+
 function startAudioRecording() {
+  if (!sessionId) return;
   const audioStream = new MediaStream(videoStream.getAudioTracks());
-  mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+  
+  // Connect WebSocket
+  wsAudio = new WebSocket(`ws://localhost:8000/ws/audio/${sessionId}`);
+  wsAudio.onmessage = (event) => {
+      const res = JSON.parse(event.data);
+      updateTranscript(res);
+  };
+  
+  mediaRecorder = new MediaRecorder(audioStream);
   mediaRecorder.ondataavailable = async (e) => {
-    if (!e.data?.size || !sessionId) return;
+    if (!e.data?.size || wsAudio.readyState !== WebSocket.OPEN) return;
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const b64 = reader.result.split(',')[1];
-      try {
-        const res = await API.post('/api/v1/ai/process-audio-chunk', { session_id: sessionId, audio_base64: b64 });
-        if (res?.transcript_text) updateTranscript(res);
-      } catch(e) {}
+      wsAudio.send(JSON.stringify({ audio_base64: b64 }));
     };
     reader.readAsDataURL(e.data);
   };
@@ -224,11 +232,21 @@ function startAudioRecording() {
 
 function updateTranscript(res) {
   const box = document.getElementById('transcriptBox');
-  if (res.transcript_text) {
+  if (res.transcript) {
     const span = document.createElement('span');
     span.className = 'word-new';
-    span.textContent = ' ' + res.transcript_text;
+    span.textContent = ' 🗣️ You: ' + res.transcript;
     box.appendChild(span);
+    box.appendChild(document.createElement('br'));
+    
+    if (res.ai_reply) {
+        const aiSpan = document.createElement('span');
+        aiSpan.style.color = "#10B981";
+        aiSpan.style.fontWeight = "bold";
+        aiSpan.textContent = ' 🤖 AI: ' + res.ai_reply;
+        box.appendChild(aiSpan);
+        box.appendChild(document.createElement('br'));
+    }
     box.scrollTop = box.scrollHeight;
     setTimeout(() => span.classList.remove('word-new'), 3000);
   }
@@ -242,7 +260,7 @@ function updateTranscript(res) {
   }
   // Intent
   if (res.extracted_income || res.extracted_profession) {
-    document.getElementById('intentBadge').textContent = 'income_declaration';
+    document.getElementById('intentBadge').textContent = res.intent || 'income_declaration';
     document.getElementById('intentBadge').className = 'badge badge-green';
   }
   document.getElementById('chkSpeech').textContent = '✅ PASS';

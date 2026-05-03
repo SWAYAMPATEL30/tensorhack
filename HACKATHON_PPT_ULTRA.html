@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensorX Ultra - Poonawalla Fincorp Presentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --white: #ffffff;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #000;
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .deck-container {
+            width: 100vw;
+            height: 100vh;
+            max-width: 1600px;
+            max-height: 900px;
+            background: var(--white);
+            position: relative;
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header Navigation */
+        header {
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: white;
+            z-index: 10;
+        }
+        .brand { display: flex; align-items: center; gap: 1rem; }
+        .logo-mark { width: 32px; height: 32px; background: var(--accent); border-radius: 6px; }
+        .logo-text { font-family: 'Outfit'; font-size: 1.5rem; font-weight: 800; color: var(--primary); letter-spacing: -0.02em; }
+        
+        .progress-nav { display: flex; gap: 1.5rem; }
+        .step { font-size: 0.75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: color 0.2s; position: relative; padding-bottom: 0.5rem; }
+        .step.active { color: var(--accent); }
+        .step.active::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--accent); }
+
+        /* Slide Body */
+        .slides { flex: 1; position: relative; overflow: hidden; }
+        .slide {
+            position: absolute;
+            inset: 0;
+            padding: 4rem 6rem;
+            display: none;
+            flex-direction: column;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .slide.active { display: flex; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Typography */
+        h1.slide-title { font-family: 'Outfit'; font-size: 3.5rem; color: var(--primary); margin-bottom: 1rem; font-weight: 800; letter-spacing: -0.03em; }
+        .slide-lead { font-size: 1.25rem; color: var(--text-light); line-height: 1.6; max-width: 900px; margin-bottom: 3rem; }
+
+        /* Grids & Layouts */
+        .grid-12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2rem; flex: 1; min-height: 0; }
+        .col-6 { grid-column: span 6; }
+        .col-8 { grid-column: span 8; }
+        .col-4 { grid-column: span 4; }
+
+        /* Cards & Components */
+        .feature-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: 16px;
+            height: 100%;
+            transition: transform 0.3s;
+        }
+        .feature-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .card-icon { font-size: 2rem; margin-bottom: 1.5rem; }
+        .card-title { font-family: 'Outfit'; font-size: 1.25rem; color: var(--primary); margin-bottom: 0.75rem; }
+        .card-text { font-size: 0.9rem; color: var(--text-light); line-height: 1.6; }
+
+        .impact-number { font-family: 'Outfit'; font-size: 4.5rem; color: var(--accent); font-weight: 800; margin-bottom: 0.5rem; }
+        .impact-label { font-size: 0.8rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        .img-wrap {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .img-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Footer & Controls */
+        footer {
+            padding: 1.5rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .controls { display: flex; gap: 0.75rem; }
+        .nav-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Cover Slide */
+        .slide-cover { justify-content: center; align-items: center; text-align: center; background: radial-gradient(circle at top right, #eff6ff 0%, #ffffff 50%); }
+        .slide-cover h1 { font-size: 7rem; letter-spacing: -0.05em; }
+        .slide-cover .lead { font-size: 1.75rem; max-width: 800px; margin: 0 auto 4rem; }
+
+        /* Matrix Slide */
+        .matrix { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+        .matrix th { text-align: left; padding: 1.5rem; border-bottom: 2px solid var(--primary); color: var(--primary); font-family: 'Outfit'; font-size: 1rem; }
+        .matrix td { padding: 1.5rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        .matrix tr:hover { background: #f8fafc; }
+        .highlight-cell { background: var(--primary-bg); color: var(--accent); font-weight: 700; }
+
+        @media print {
+            body { background: white; overflow: visible; height: auto; display: block; }
+            .deck-container { box-shadow: none; width: 100%; height: auto; max-width: none; max-height: none; display: block; }
+            .slide { position: relative; display: flex !important; page-break-after: always; height: 100vh; padding: 4rem; animation: none; opacity: 1 !important; }
+            footer, .controls, .progress-nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="deck-container">
+        <header>
+            <div class="brand">
+                <div class="logo-mark"></div>
+                <div class="logo-text">TensorX</div>
+            </div>
+            <nav class="progress-nav" id="progress-nav">
+                <div class="step active" onclick="goToSlide(0)">Strategy</div>
+                <div class="step" onclick="goToSlide(2)">Challenge</div>
+                <div class="step" onclick="goToSlide(3)">Innovation</div>
+                <div class="step" onclick="goToSlide(5)">Engineering</div>
+                <div class="step" onclick="goToSlide(7)">Impact</div>
+                <div class="step" onclick="goToSlide(9)">Future</div>
+            </nav>
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-light);">SLIDE <span id="current-slide-num">01</span> / 10</div>
+        </header>
+
+        <div class="slides">
+            <!-- SLIDE 0: COVER -->
+            <div class="slide slide-cover active">
+                <p style="text-transform: uppercase; letter-spacing: 0.3em; font-weight: 800; color: var(--accent); margin-bottom: 1.5rem;">Strategic Submission 2026</p>
+                <h1>TensorX</h1>
+                <p class="lead">Pioneering Agentic AI Architecture for the Next Generation of Poonawalla Fincorp Digital Lending.</p>
+                <div style="display: flex; gap: 3rem; margin-top: 2rem;">
+                    <div class="img-wrap" style="width: 800px; height: 400px; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.15);">
+                        <img src="./_- visual selection (4).png" alt="TensorX Overview">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 1: EXECUTIVE BRIEF -->
+            <div class="slide">
+                <h1 class="slide-title">Executive Brief</h1>
+                <p class="slide-lead">TensorX is not a form-filler; it is a full-stack loan underwriting swarm.</p>
+                <div class="grid-12">
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="impact-number">10.6s</div>
+                            <div class="impact-label">Decision Velocity</div>
+                            <p class="card-text" style="margin-top: 1rem;">Complete onboarding from first "Hello" to final "Sanction Letter".</p>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="impact-number">96%</div>
+                            <div class="impact-label">OpEx Reduction</div>
+                            <p class="card-text" style="margin-top: 1rem;">Eliminating manual KYC processing and physical verification loops.</p>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="impact-number">75+</div>
+                            <div class="impact-label">AI Agents</div>
+                            <p class="card-text" style="margin-top: 1rem;">A swarm of specialized micro-models vetting every applicant signal.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 2: THE CHALLENGE -->
+            <div class="slide">
+                <h1 class="slide-title">Market Challenges</h1>
+                <p class="slide-lead">Identifying the systemic friction in modern lending.</p>
+                <div class="grid-12">
+                    <div class="col-6">
+                        <div style="display: flex; flex-direction: column; gap: 2rem;">
+                            <div style="border-left: 4px solid #ef4444; padding-left: 2rem;">
+                                <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">67% User Attrition</h3>
+                                <p style="color: var(--text-light);">Static forms and multi-day cycles cause massive dropout in prime and near-prime segments.</p>
+                            </div>
+                            <div style="border-left: 4px solid #f59e0b; padding-left: 2rem;">
+                                <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Synthetic Fraud</h3>
+                                <p style="color: var(--text-light);">Traditional KYC is blind to sophisticated AI-generated IDs and deepfake video injections.</p>
+                            </div>
+                            <div style="border-left: 4px solid var(--accent); padding-left: 2rem;">
+                                <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Regulatory Overhead</h3>
+                                <p style="color: var(--text-light);">Manual RBI V-CIP compliance is expensive and prone to human error during auditing.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="img-wrap">
+                            <img src="./_- visual selection (3).png" alt="Challenge Analysis">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3: THE INNOVATION -->
+            <div class="slide">
+                <h1 class="slide-title">Aria: Agentic Voice-First KYC</h1>
+                <p class="slide-lead">Moving from form-based entry to trust-based conversation.</p>
+                <div class="grid-12">
+                    <div class="col-7">
+                        <div class="img-wrap" style="height: 100%;">
+                            <img src="./_- visual selection (1).png" alt="Aria Interface">
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <div style="background: #0f172a; color: white; padding: 2.5rem; border-radius: 20px; height: 100%;">
+                            <h3 style="font-family: 'Outfit'; font-size: 1.5rem; margin-bottom: 1.5rem;">Multimodal Verification</h3>
+                            <ul style="list-style: none; display: flex; flex-direction: column; gap: 1.5rem;">
+                                <li>
+                                    <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Real-time Transcription</strong>
+                                    <span style="font-size: 0.9rem; opacity: 0.8;">Whisper-powered extraction of PAN, Aadhaar, and Income intents.</span>
+                                </li>
+                                <li>
+                                    <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Continuous Liveness</strong>
+                                    <span style="font-size: 0.9rem; opacity: 0.8;">YOLOv11s monitoring for gaze, lip-sync, and iris movement.</span>
+                                </li>
+                                <li>
+                                    <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Frictionless Sanction</strong>
+                                    <span style="font-size: 0.9rem; opacity: 0.8;">Instant credit scoring without a single manual keyboard input.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: THE COMPETITIVE EDGE -->
+            <div class="slide">
+                <h1 class="slide-title">The Competitive Edge</h1>
+                <p class="slide-lead">How TensorX outpaces traditional lending stacks.</p>
+                <table class="matrix">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Traditional Lending</th>
+                            <th>Neo-Bank Apps</th>
+                            <th style="color: var(--accent);">TensorX Agentic AI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Onboarding Time</td>
+                            <td>3-5 Days</td>
+                            <td>10-15 Minutes</td>
+                            <td class="highlight-cell">10.6 Seconds</td>
+                        </tr>
+                        <tr>
+                            <td>KYC Method</td>
+                            <td>Manual/Static</td>
+                            <td>Static OCR</td>
+                            <td class="highlight-cell">Conversational/Real-time</td>
+                        </tr>
+                        <tr>
+                            <td>Fraud Defense</td>
+                            <td>Reactive</td>
+                            <td>Basic Liveness</td>
+                            <td class="highlight-cell">Continuous Biometric Gaze</td>
+                        </tr>
+                        <tr>
+                            <td>Decisioning</td>
+                            <td>Human Underwriter</td>
+                            <td>Rule-based engine</td>
+                            <td class="highlight-cell">XGBoost Swarm + SHAP</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SLIDE 5: SYSTEM ARCHITECTURE -->
+            <div class="slide">
+                <h1 class="slide-title">Engineering Mastery</h1>
+                <p class="slide-lead">A sub-100ms pipeline for enterprise-grade lending.</p>
+                <div class="grid-12">
+                    <div class="col-8">
+                        <div class="img-wrap">
+                            <img src="./_- visual selection (3).png" alt="Architecture Diagram">
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <div class="feature-card">
+                                <h4 style="font-family: 'Outfit'; color: var(--primary);">LiveKit SFU</h4>
+                                <p class="card-text">Stateless WebRTC infrastructure for high-concurrency video sessions.</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4 style="font-family: 'Outfit'; color: var(--primary);">FastAPI Orchestrator</h4>
+                                <p class="card-text">Async pipeline managing 75 parallel model inferences.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 6: AGENTIC ECOSYSTEM -->
+            <div class="slide">
+                <h1 class="slide-title">The Swarm Architecture</h1>
+                <p class="slide-lead">75+ specialized agents vetting every applicant signal.</p>
+                <div class="grid-12">
+                    <div class="col-4">
+                        <div class="feature-card" style="border-bottom: 4px solid var(--accent);">
+                            <div class="card-icon">👁</div>
+                            <h3 class="card-title">Vision Swarm</h3>
+                            <p class="card-text">Iris tracking, emotion radar, and pixel-level deepfake CNN protection.</p>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card" style="border-bottom: 4px solid var(--accent);">
+                            <div class="card-icon">🎙</div>
+                            <h3 class="card-title">Voice Swarm</h3>
+                            <p class="card-text">Multilingual intent normalization and semantic stress analysis.</p>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card" style="border-bottom: 4px solid var(--accent);">
+                            <div class="card-icon">🧠</div>
+                            <h3 class="card-title">Intelligence Swarm</h3>
+                            <p class="card-text">XGBoost Risk Scoring with full SHAP local explainability for audits.</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="flex: 1; margin-top: 2rem;">
+                    <div class="img-wrap" style="height: 150px;">
+                        <img src="./_- visual selection (2).png" alt="Agent Map">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 7: BUSINESS PERFORMANCE -->
+            <div class="slide">
+                <h1 class="slide-title">Business Performance</h1>
+                <p class="slide-lead">Quantifying the Poonawalla Fincorp advantage.</p>
+                <div class="grid-12">
+                    <div class="col-6">
+                        <div class="img-wrap">
+                            <img src="./jsk_dashboard_preview.png" alt="Admin Dashboard">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-grid" style="grid-template-columns: 1fr; gap: 1.5rem;">
+                            <div class="feature-card" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem;">
+                                <div>
+                                    <div class="impact-number" style="font-size: 3rem;">99.2%</div>
+                                    <div class="impact-label">KYC Success Rate</div>
+                                </div>
+                                <div style="width: 120px; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden;">
+                                    <div style="width: 99%; height: 100%; background: var(--success);"></div>
+                                </div>
+                            </div>
+                            <div class="feature-card" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem;">
+                                <div>
+                                    <div class="impact-number" style="font-size: 3rem;">10.6s</div>
+                                    <div class="impact-label">Session Duration</div>
+                                </div>
+                                <div style="color: var(--accent); font-weight: 800;">-98% TIME</div>
+                            </div>
+                            <div class="feature-card" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem;">
+                                <div>
+                                    <div class="impact-number" style="font-size: 3rem;">₹45</div>
+                                    <div class="impact-label">Onboarding Cost</div>
+                                </div>
+                                <div style="color: var(--success); font-weight: 800;">SAVING ₹1,155</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 8: COMPLIANCE & ROADMAP -->
+            <div class="slide">
+                <h1 class="slide-title">The Road Ahead</h1>
+                <p class="slide-lead">Scaling the future of frictionless fintech.</p>
+                <div class="grid-12">
+                    <div class="col-6">
+                        <h3 style="font-family: 'Outfit'; margin-bottom: 1.5rem; color: var(--primary);">Trust & Compliance</h3>
+                        <div class="feature-card" style="margin-bottom: 1rem;">
+                            <p><strong>RBI V-CIP 2024:</strong> Full alignment with latest biometric video norms.</p>
+                        </div>
+                        <div class="feature-card">
+                            <p><strong>DPDPA 2023:</strong> Auditable decision trails with immutable logging.</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h3 style="font-family: 'Outfit'; margin-bottom: 1.5rem; color: var(--primary);">Future Integration</h3>
+                        <div class="feature-card" style="margin-bottom: 1rem;">
+                            <p><strong>Account Aggregator:</strong> Direct API integration for thin-file analysis.</p>
+                        </div>
+                        <div class="feature-card">
+                            <p><strong>Hyper-Personalization:</strong> LLM-driven custom loan product design.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 9: THANK YOU -->
+            <div class="slide slide-cover">
+                <h1 style="font-size: 6rem;">Thank You.</h1>
+                <p class="lead">TensorX: Redefining Digital Lending for Poonawalla Fincorp.</p>
+                <div style="display: flex; gap: 2rem; margin-top: 2rem;">
+                    <a href="https://drive.google.com/drive/folders/12bjbNCqGsVcn5J2XMJx9hXwc2LxbyQay?usp=sharing" target="_blank" style="background: var(--primary); color: white; padding: 1rem 2.5rem; border-radius: 10px; text-decoration: none; font-weight: 700;">View Repository</a>
+                </div>
+                <p style="margin-top: 5rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.2em;">Built to Win. Built for PFL.</p>
+            </div>
+        </div>
+
+        <footer>
+            <div>POONAWALLA FINCORP | TENSORX HACKATHON 2026</div>
+            <div class="controls">
+                <button class="nav-btn" onclick="prevSlide()">←</button>
+                <button class="nav-btn" onclick="nextSlide()">→</button>
+            </div>
+            <div>STRICTLY CONFIDENTIAL</div>
+        </footer>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const steps = document.querySelectorAll('.step');
+        const slideNum = document.getElementById('current-slide-num');
+
+        function updateSlide() {
+            slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
+            
+            // Map currentSlide to navigation steps
+            let activeStep = 0;
+            if (currentSlide >= 1) activeStep = 0;
+            if (currentSlide >= 2) activeStep = 1;
+            if (currentSlide >= 3) activeStep = 2;
+            if (currentSlide >= 5) activeStep = 3;
+            if (currentSlide >= 7) activeStep = 4;
+            if (currentSlide >= 9) activeStep = 5;
+            
+            steps.forEach((s, i) => s.classList.toggle('active', i === activeStep));
+            slideNum.innerText = (currentSlide + 1).toString().padStart(2, '0');
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            updateSlide();
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            updateSlide();
+        }
+
+        function goToSlide(n) {
+            currentSlide = n;
+            updateSlide();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+        
+        updateSlide();
+    </script>
+</body>
+</html>

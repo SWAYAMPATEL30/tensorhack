@@ -5,8 +5,34 @@
 <title>Poonawalla Loan Wizard — Dashboard</title>
 <link rel="stylesheet" href="css/main.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  #auth-overlay { position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .auth-card { background: white; padding: 2rem; border-radius: 12px; width: 400px; max-width: 90%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  .auth-card h2 { margin-top: 0; color: #1e293b; }
+  .auth-input { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; }
+  .auth-btn { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+  .auth-btn:hover { background: #4338ca; }
+  .hidden { display: none !important; }
+</style>
 </head>
 <body>
+
+<!-- SUPABASE AUTH OVERLAY -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div style="font-weight: 800; font-size: 24px; color: #4f46e5; margin-bottom: 5px;">PF Admin</div>
+    <h2 style="font-size: 16px; margin-bottom: 20px; color: #64748b;">Secure RBAC Login</h2>
+    <input type="email" id="auth-email" class="auth-input" placeholder="Admin/Underwriter Email">
+    <input type="password" id="auth-pwd" class="auth-input" placeholder="Password">
+    <button class="auth-btn" id="auth-login-btn">Log In</button>
+    <p id="auth-error" style="color: red; font-size: 13px; margin-top: 10px;"></p>
+    <div style="margin-top: 15px; font-size: 12px; color: #64748b; text-align: left;">
+       <strong>Roles Info:</strong><br/>
+       Users authenticated via Supabase will have role-based visibility based on their account metadata (Admin vs Underwriter vs Auditor).
+    </div>
+  </div>
+</div>
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
@@ -223,6 +249,76 @@ async function loadDashboard() {
 
 loadDashboard();
 setInterval(loadDashboard, 5000);
+</script>
+
+<script>
+// Supabase RBAC Logic
+const SUPABASE_URL = "https://zzhasosufixuxcsxvwsg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kxXGf_hJEpSgF3BwI25cWQ_z-sEfuV5";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const authOverlay = document.getElementById("auth-overlay");
+const loginBtn = document.getElementById("auth-login-btn");
+const emailIn = document.getElementById("auth-email");
+const pwdIn = document.getElementById("auth-pwd");
+const errOut = document.getElementById("auth-error");
+
+async function checkSession() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+        authOverlay.classList.add("hidden");
+        const email = session.user.email;
+        let role = "Auditor";
+        if (email.includes("admin")) role = "Admin";
+        if (email.includes("underwriter")) role = "Underwriter";
+        
+        const sidebar = document.querySelector('.sidebar-nav');
+        if (!document.getElementById("auth-logout-btn")) {
+            const logoutDiv = document.createElement('div');
+            logoutDiv.innerHTML = `<a href="#" id="auth-logout-btn" class="nav-item" style="color: #ef4444; margin-top: auto;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg> Logout (${role})</a>`;
+            sidebar.appendChild(logoutDiv);
+            
+            document.getElementById("auth-logout-btn").addEventListener("click", async (e) => {
+                e.preventDefault();
+                await supabaseClient.auth.signOut();
+                window.location.reload();
+            });
+        }
+        
+        // Enforce RBAC
+        if (role === "Auditor") {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                if(el.innerText.includes('Fraud') || el.innerText.includes('Underwriter')) {
+                    el.style.display = 'none';
+                }
+            });
+        }
+    } else {
+        authOverlay.classList.remove("hidden");
+    }
+}
+
+loginBtn.addEventListener("click", async () => {
+    loginBtn.innerText = "Authenticating...";
+    errOut.innerText = "";
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: emailIn.value,
+        password: pwdIn.value
+    });
+    
+    if (error) {
+        if (emailIn.value === "admin@pf.com" && pwdIn.value === "admin") {
+             authOverlay.classList.add("hidden");
+        } else {
+             errOut.innerText = error.message + " (Or use demo admin@pf.com / admin)";
+        }
+    } else {
+        checkSession();
+    }
+    loginBtn.innerText = "Log In";
+});
+
+checkSession();
 </script>
 </body>
 </html>

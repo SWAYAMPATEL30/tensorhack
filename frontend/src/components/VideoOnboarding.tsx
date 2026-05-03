@@ -12,6 +12,9 @@ export default function VideoOnboarding() {
   const [extractedData, setExtractedData] = useState<{income?: number; profession?: string}>({});
   const [offer, setOffer] = useState<any>(null);
   const [error, setError] = useState<string>("");
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [wsAudio, setWsAudio] = useState<WebSocket | null>(null);
+  const [aiChat, setAiChat] = useState<string>("Hello! I am your AI agent. Let's get started. What is the purpose of your loan today?");
 
   useEffect(() => {
     // Initialize session
@@ -34,6 +37,42 @@ export default function VideoOnboarding() {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
         setStreamActive(true);
+
+        // Initialize Audio WebSocket
+        const ws = new WebSocket(`ws://localhost:8000/ws/audio/${sessionId}`);
+        ws.onopen = () => {
+          console.log("Audio WebSocket connected.");
+        };
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.running_transcript) {
+             setTranscript(data.running_transcript);
+          }
+          if (data.extracted_income) {
+             setExtractedData(prev => ({ ...prev, income: data.extracted_income }));
+          }
+          if (data.extracted_profession) {
+             setExtractedData(prev => ({ ...prev, profession: data.extracted_profession }));
+          }
+          if (data.ai_reply) {
+             setAiChat(data.ai_reply);
+          }
+        };
+        setWsAudio(ws);
+
+        const recorder = new MediaRecorder(stream);
+        recorder.ondataavailable = async (e) => {
+          if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64data = (reader.result as string).split(',')[1];
+              ws.send(JSON.stringify({ audio_base64: base64data }));
+            };
+            reader.readAsDataURL(e.data);
+          }
+        };
+        recorder.start(3000); // Send chunk every 3 seconds for lower latency
+        setMediaRecorder(recorder);
       }
     } catch (err) {
       setError("Please allow camera and microphone permissions to proceed.");
@@ -86,21 +125,10 @@ export default function VideoOnboarding() {
     };
   }, [sessionId, streamActive]);
 
-  // Simulate audio chunk ending and getting extracted AI insights
-  const simulateAudioProcessing = async () => {
-    if (!sessionId) return;
-    try {
-      const res = await fetch("http://localhost:8000/api/v1/ai/process-audio-chunk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, audio_base64: "fake_audio_blob" })
-      });
-      const data = await res.json();
-      setTranscript(data.transcript_text);
-      setExtractedData({ income: data.extracted_income, profession: data.extracted_profession });
-    } catch(e) {
-       console.error(e);
-    }
+  // The audio is now processed live in the background. 
+  // We keep this function stubbed out or just request the offer.
+  const simulateAudioProcessing = () => {
+     console.log("Audio is now captured live automatically!");
   };
 
   // Evaluate risk & calculate offer
@@ -148,9 +176,15 @@ export default function VideoOnboarding() {
         
         {/* Mock Transcription Overlay */}
         {streamActive && (
-          <div className="absolute bottom-4 left-4 right-4 bg-black/60 text-white p-3 rounded-lg backdrop-blur-sm text-sm">
-            <span className="font-semibold text-indigo-300">Live Transcript:</span>{" "}
-            {transcript || "Listening..."}
+          <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-2">
+            <div className="bg-indigo-900/80 text-white p-3 rounded-lg backdrop-blur-sm text-sm shadow-xl border border-indigo-500/30">
+              <span className="font-bold text-emerald-400">🤖 AI Agent:</span>{" "}
+              {aiChat}
+            </div>
+            <div className="bg-black/60 text-white p-3 rounded-lg backdrop-blur-sm text-sm">
+              <span className="font-semibold text-indigo-300">🗣️ You:</span>{" "}
+              {transcript || "Listening..."}
+            </div>
           </div>
         )}
       </div>

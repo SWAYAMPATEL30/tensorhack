@@ -64,22 +64,67 @@ except Exception as e:
     analyze_frame = lambda x: (28.0, "neutral", 0.75, [])
     MODEL_STATUS["yolo"] = {"loaded": False, "latency_ms": 0, "predictions_today": 0, "error": str(e)}
 
-from ml.nlp_engine import extract_income, extract_profession, analyze_risk
+from ml.nlp_engine import extract_income, extract_profession, extract_loan_amount, analyze_risk
 print("All models ready.\n")
 
 # ═══════════════════════════════════════════════════════════════
 # DATABASE
 # ═══════════════════════════════════════════════════════════════
 import sqlite3
+import psycopg2
+from psycopg2.extras import DictCursor
+
+DB_MODE = "postgres"
+
+class PgConn:
+    def __init__(self):
+        self.conn = psycopg2.connect("postgresql://postgres:Sakshi%40998799@db.zzhasosufixuxcsxvwsg.supabase.co:5432/postgres")
+        self.cursor = self.conn.cursor(cursor_factory=DictCursor)
+    def execute(self, query, params=None):
+        query = query.replace("?", "%s")
+        if params:
+            self.cursor.execute(query, params)
+        else:
+            self.cursor.execute(query)
+        return self.cursor
+    def executescript(self, query):
+        self.cursor.execute(query)
+    def fetchall(self):
+        return self.cursor.fetchall()
+    def fetchone(self):
+        return self.cursor.fetchone()
+    def commit(self):
+        self.conn.commit()
+    def close(self):
+        self.cursor.close()
+        self.conn.close()
+    @property
+    def row_factory(self):
+        pass
+    @row_factory.setter
+    def row_factory(self, val):
+        pass
+
+# Check connection to set DB_MODE
+try:
+    pg = PgConn()
+    pg.close()
+except Exception as e:
+    print(f"PostgreSQL raw connection failed: {e}. Falling back to SQLite.")
+    DB_MODE = "sqlite"
 
 def get_db():
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    return conn
+    if DB_MODE == "postgres":
+        return PgConn()
+    else:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
     conn = get_db()
-    conn.executescript("""
+    pk_str = "SERIAL PRIMARY KEY" if DB_MODE == "postgres" else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    conn.executescript(f"""
     CREATE TABLE IF NOT EXISTS sessions (
         session_id TEXT PRIMARY KEY, created_at TEXT, ended_at TEXT,
         status TEXT DEFAULT 'active', applicant_name TEXT,
@@ -92,15 +137,16 @@ def init_db():
         offer_amount INTEGER, offer_rate REAL, offer_tenure INTEGER,
         offer_emi REAL, decision TEXT, transcript TEXT DEFAULT '',
         detected_intent TEXT, emotion TEXT DEFAULT 'neutral',
-        liveness_score REAL DEFAULT 0.9, city TEXT DEFAULT 'Unknown'
+        liveness_score REAL DEFAULT 0.9, city TEXT DEFAULT 'Unknown',
+        requested_amount INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS audit_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT,
+        id {pk_str}, session_id TEXT,
         timestamp TEXT, event_type TEXT, model_used TEXT,
         input_data TEXT, output_data TEXT, confidence REAL, latency_ms REAL
     );
     CREATE TABLE IF NOT EXISTS video_frames (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT,
+        id {pk_str}, session_id TEXT,
         frame_id TEXT, timestamp TEXT, estimated_age REAL,
         liveness_score REAL, confidence REAL, detected_objects TEXT
     );
@@ -517,12 +563,26 @@ async def ws_audio(ws: WebSocket, session_id: str):
                 full_transcript = (full_transcript + " " + text).strip()
                 intent, conf = _intent(text)
                 income = extract_income(text); prof = extract_profession(text)
+                requested_loan = extract_loan_amount(text)
                 ms = (time.time()-t0)*1000
                 conn = get_db()
                 conn.execute("UPDATE sessions SET transcript=?,detected_intent=? WHERE session_id=?",(full_transcript,intent,session_id))
                 if income>0: conn.execute("UPDATE sessions SET monthly_income=? WHERE session_id=?",(income,session_id))
+                if requested_loan>0: conn.execute("UPDATE sessions SET requested_amount=? WHERE session_id=?",(requested_loan,session_id))
                 conn.commit(); conn.close()
-                await ws.send_json({"transcript":text,"running_transcript":full_transcript,"intent":intent,"intent_confidence":round(conf,3),"extracted_income":income,"extracted_profession":prof,"latency_ms":round(ms,1)})
+                
+                # Conversational AI Logic
+                ai_reply = ""
+                if not income:
+                    ai_reply = "I see. Could you also mention your approximate monthly or yearly income so I can calculate your offer?"
+                elif not prof:
+                    ai_reply = f"Got it. A {income} income is noted. What is your current profession or employment type?"
+                elif not requested_loan:
+                    ai_reply = "Thanks. And how much loan amount are you looking for today?"
+                else:
+                    ai_reply = f"Perfect. I have your income as {income}, profession as {prof}, and requested loan as {requested_loan}. I am analyzing your profile now."
+
+                await ws.send_json({"transcript":text,"running_transcript":full_transcript,"intent":intent,"intent_confidence":round(conf,3),"extracted_income":income,"extracted_profession":prof,"latency_ms":round(ms,1), "ai_reply": ai_reply})
     except WebSocketDisconnect: pass
 
 # ═══════════════════════════════════════════════════════════════
@@ -559,8 +619,12 @@ try:
 
     @app.post("/api/v1/ai/process-audio-chunk", response_model=_sch.ProcessAudioResponse)
     def v1_audio(p: _sch.ProcessAudioPayload, db: _Sess=_Dep(_db)):
-        text=transcribe_audio(p.audio_base64); income=extract_income(text); prof=extract_profession(text)
-        db.add(_mdl.TranscriptRecord(session_id=p.session_id,raw_dialogue=text,extracted_income=income,extracted_profession=prof)); db.commit()
+        text=transcribe_audio(p.audio_base64); income=extract_income(text); prof=extract_profession(text); requested=extract_loan_amount(text)
+        db.add(_mdl.TranscriptRecord(session_id=p.session_id,raw_dialogue=text,extracted_income=income,extracted_profession=prof))
+        # Optional: Store requested somewhere if we want, or just rely on the session table.
+        sess = db.query(_mdl.Session).filter_by(session_id=p.session_id).first()
+        if sess and requested>0: sess.requested_amount = requested
+        db.commit()
         return _sch.ProcessAudioResponse(transcript_text=text,extracted_income=income,extracted_profession=prof)
 
     @app.post("/api/v1/offer/calculate", response_model=_sch.LoanOfferResponse)
@@ -573,7 +637,13 @@ try:
         risk=analyze_risk(tr.raw_dialogue if tr else "")
         if ev: ev.llm_risk_band=risk; db.commit()
         rate=12.5 if risk=="LOW" else 18.5
-        amt=income*2.5*(0.4 if risk=="HIGH" else 1.0)
+        sess=db.query(_mdl.Session).filter_by(session_id=p.session_id).first()
+        requested = sess.requested_amount if sess and sess.requested_amount else 0
+        
+        # Determine amount dynamically based on requested and risk limits
+        max_allowed = income*2.5*(0.4 if risk=="HIGH" else 1.0)
+        amt = requested if requested > 0 and requested <= max_allowed else max_allowed
+        
         emi=(amt*(rate/12/100))/(1-_math.pow(1+(rate/12/100),-36))
         return _sch.LoanOfferResponse(status="APPROVED",maximum_amount=round(amt,-3),tenure_months=36,interest_rate=rate,calculated_emi=emi)
 

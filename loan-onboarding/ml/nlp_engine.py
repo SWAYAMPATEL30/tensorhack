@@ -36,6 +36,20 @@ def extract_income(text: str) -> int:
     print("DEBUG NLP: No income found.")
     return 0
 
+def extract_loan_amount(text: str) -> int:
+    if not text: return 0
+    text_lower = text.lower()
+    
+    # Check if words indicating loan/borrowing exist
+    if any(w in text_lower for w in ["loan", "need", "borrow", "want", "lakh", "lac", "crore", "amount"]):
+        lakh_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:lakh|lac|l\b)', text_lower)
+        if lakh_match: return int(float(lakh_match.group(1)) * 100000)
+        crore_match = re.search(r'(\d+(?:\.\d+)?)\s*crore', text_lower)
+        if crore_match: return int(float(crore_match.group(1)) * 10000000)
+        nums = re.findall(r'\b(\d{4,})\b', text.replace(',', ''))
+        if nums: return int(nums[0])
+    return 0
+
 
 PROFESSION_KEYWORDS = [
     "software engineer", "engineer", "developer", "programmer", "architect",
