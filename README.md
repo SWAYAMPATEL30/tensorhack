@@ -1,10 +1,10 @@
-# 🚀 Poonawalla Fincorp Loan Wizard AI
+#  Poonawalla Fincorp Loan Wizard AI
 
 An enterprise-grade, real-time AI onboarding system built with FastAPI and an interactive Admin Dashboard. It evaluates credit risk, validates identity (liveness, age discrepancy), performs speech-to-text with STT (Whisper), and generates customized loan offers on the fly using a multi-model ML ensemble.
 
 ---
 
-## 🌟 Full Detail Description
+##  Full Detail Description
 
 The **Poonawalla Fincorp Loan Wizard AI** is a state-of-the-art fintech application designed to automate, secure, and accelerate the loan onboarding process. By combining live video streaming with an ensemble of over **75 Agentic AI features**, the system removes the friction of traditional loan applications. 
 
@@ -12,7 +12,7 @@ The application utilizes multiple Machine Learning models seamlessly integrated 
 
 ---
 
-## 🏗 Architecture & Flowchart
+##  Architecture & Flowchart
 
 The onboarding process flows automatically through a gauntlet of AI checks:
 
@@ -41,7 +41,7 @@ graph TD
 
 ---
 
-## 🧑‍💻 How New Application Onboarding Works
+##  How New Application Onboarding Works
 
 The new applicant experience is entirely **agentic and paperless**, dropping industry processing time from 3–5 days to an average of **10.6 seconds**:
 
@@ -54,7 +54,7 @@ The new applicant experience is entirely **agentic and paperless**, dropping ind
 
 ---
 
-## ✨ The 75 Agentic AI Features
+##  The 75 Agentic AI Features
 
 This platform is powered by a robust ecosystem of 75 integrated features, broadly categorized into:
 
@@ -109,7 +109,7 @@ This platform is powered by a robust ecosystem of 75 integrated features, broadl
 
 ---
 
-## 💻 Tech Stack
+##  Tech Stack
 - **Backend**: Python 3.10+, FastAPI, Uvicorn, SQLite3, asyncio, sse-starlette.
 - **Machine Learning**: Scikit-Learn, XGBoost, PyTorch, Whisper, YOLOv10, Joblib, NLTK.
 - **Frontend**: HTML5, Vanilla JavaScript, Chart.js, CSS3 (No Node.js dependency required).
@@ -117,7 +117,7 @@ This platform is powered by a robust ecosystem of 75 integrated features, broadl
 
 ---
 
-## 🛠 Running the System
+##  Running the System
 
 Ensure you have a Python `venv` activated with all `requirements.txt` installed.
 
