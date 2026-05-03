@@ -111,7 +111,6 @@ TensorX utilizes a multi-layered swarm of specialized agents to ensure absolute 
 ---
 
 ### Performance & Business Metrics
-![Admin Success Dashboard](./jsk_dashboard_preview.png)
 
 - Onboarding Speed: 10.6 Seconds (Mean Time to Sanction).
 - Cost Efficiency: ₹45 per applicant (compared to industry standard ₹1,200).
@@ -158,9 +157,7 @@ To deploy the TensorX environment locally:
 
 ### Project Assets
 - Project Repository & Video Demo: [View Assets](https://drive.google.com/drive/folders/12bjbNCqGsVcn5J2XMJx9hXwc2LxbyQay?usp=sharing)
-- Strategic Presentation (PDF): [HACKATHON_PPT_ULTRA_FINAL.pdf](./HACKATHON_PPT_ULTRA_FINAL.pdf)
-- Technical Documentation: [TensorX_Project_Final_Document.pdf](./TensorX_Project_Final_Document.pdf)
-
+- 
 ---
 
 ### Conclusion
